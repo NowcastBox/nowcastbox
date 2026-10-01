@@ -142,7 +142,7 @@ def test_page_examples_run(page: Path, tmp_path: Path, monkeypatch: pytest.Monke
 def test_user_guide_pages_have_examples() -> None:
     guide = DOCS / "user-guide"
     without = [
-        str(path.relative_to(DOCS))
+        path.relative_to(DOCS).as_posix()
         for path in sorted(guide.rglob("*.md"))
         if path.name != "index.md" or path.parent.name == "data-sources"
         if not extract_python_blocks(path.read_text(encoding="utf-8"))
@@ -189,8 +189,11 @@ def test_nav_pages_exist() -> None:
 
 def test_every_page_is_in_nav() -> None:
     pages = set(_nav_pages(_load_mkdocs_config()["nav"]))
+    # mkdocs navigation uses "/" on every platform (Windows paths use "\\")
     orphans = [
-        str(path.relative_to(DOCS)) for path in _pages() if str(path.relative_to(DOCS)) not in pages
+        path.relative_to(DOCS).as_posix()
+        for path in _pages()
+        if path.relative_to(DOCS).as_posix() not in pages
     ]
     assert orphans == []
 

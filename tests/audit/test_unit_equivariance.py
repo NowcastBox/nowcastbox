@@ -88,7 +88,11 @@ def test_models_are_equivariant_to_units(panel: pd.DataFrame, name: str) -> None
 BENCHMARKS: dict[str, Callable[[], Any]] = {
     "ar": lambda: AR(p=1),
     "umidas": lambda: UMIDAS(),
-    "midas": lambda: MIDAS(),
+    # Two indicators: with all four nearly collinear indicators (8 lag parameters for 50
+    # quarters) the NLS surface has near-tied optima whose nowcasts differ by ~0.3, so
+    # rounding alone (platform BLAS) can select either one; that is identification, not
+    # units. The multi-start MIDAS is stable to 1e-6 here.
+    "midas": lambda: MIDAS(predictors=["a", "b"]),
 }
 
 

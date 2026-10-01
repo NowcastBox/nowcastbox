@@ -114,7 +114,8 @@ def mpl_context(theme: Theme) -> Iterator[None]:
     """Context in which Matplotlib artists are created with the theme's rcParams."""
     import matplotlib as mpl
 
-    with mpl.rc_context(theme.matplotlib_rc()):
+    # cast: matplotlib's stubs type rc keys as RcKeyType literals (newer releases)
+    with mpl.rc_context(cast("Any", theme.matplotlib_rc())):
         yield
 
 

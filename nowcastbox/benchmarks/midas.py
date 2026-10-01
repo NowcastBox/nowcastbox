@@ -581,19 +581,27 @@ class MIDAS(_MidasBase):
         starts = [
             np.tile(np.asarray(s, dtype=float), len(blocks)) for s in _STARTS[self.polynomial]
         ]
-        x0 = min(starts, key=lambda theta: self._profile(theta, blocks, ar, y))
         # L-BFGS-B stops on absolute gradient/step tolerances: minimise the scale-free
         # SSR / SST so that theta (and the nowcast) do not depend on the units of y.
+        # Centring first makes the input identical (to rounding) under affine changes of
+        # units; the intercept of the profile regression absorbs the mean.
         centred = y - y.mean()
-        y_scaled = y / max(float(np.sqrt(centred @ centred)), np.finfo(float).tiny)
-        res = minimize(
-            self._profile,
-            x0,
-            args=(blocks, ar, y_scaled),
-            method="L-BFGS-B",
-            bounds=bounds,
-            options={"maxiter": int(self.max_iter), "ftol": 1e-12, "gtol": 1e-8},
-        )
+        y_scaled = centred / max(float(np.sqrt(centred @ centred)), np.finfo(float).tiny)
+        # The NLS surface is multimodal when several indicators share a weakly identified
+        # lag polynomial: run the optimiser from every start and keep the best optimum,
+        # so the answer does not hinge on one optimisation path (and on the platform).
+        runs = [
+            minimize(
+                self._profile,
+                x0,
+                args=(blocks, ar, y_scaled),
+                method="L-BFGS-B",
+                bounds=bounds,
+                options={"maxiter": int(self.max_iter), "ftol": 1e-12, "gtol": 1e-8},
+            )
+            for x0 in starts
+        ]
+        res = min(runs, key=lambda r: float(r.fun))
         if not bool(res.success):
             warnings.warn(
                 f"MIDAS: the NLS optimiser did not converge ({res.message}).",
