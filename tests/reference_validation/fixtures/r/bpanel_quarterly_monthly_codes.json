@@ -1,0 +1,9 @@
+{
+  "input": ["PAYEMS", "UNRATE", "GDPC1", "ULCNFB"],
+  "codes": [2, 2, 1, 2],
+  "output_columns": ["PAYEMS", "UNRATE"],
+  "n_observed": {
+    "PAYEMS": 383,
+    "UNRATE": 383
+  }
+}

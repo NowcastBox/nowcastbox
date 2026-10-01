@@ -1,0 +1,33 @@
+# nowcastbox pipeline spec: Brazilian GDP nowcast (plan section 6.2).
+# Run with:   nowcastbox run brazil_pib.yaml
+# Check with: nowcastbox validate brazil_pib.yaml
+name: brazil_pib
+description: QoQ growth of Brazilian GDP from the built-in BCB/IBGE/IPEA panel.
+target: pib
+
+data:
+  source: brazil_nowcast        # built-in dataset (`nowcastbox datasets list`),
+                                # csv/parquet file or connectors (bcb/ibge/ipea/fred)
+  start: 2010-01                # sample start (optional)
+  vintage: today                # information set: `today` or a date (pseudo real-time)
+
+preprocessing:
+  transform: true               # transformations of the dataset legend (qoq, dlog, ...)
+  max_na_prop: 0.5              # drop series with more than 50 % missing slots
+
+model:
+  type: MixedFreqDFM            # EM estimation (Banbura & Modugno, 2014)
+  factors: {global: 1, real: 1, soft: 1}
+  idiosyncratic: student_t      # robust errors (I3)
+  long_run_mean: time_varying   # time-varying long-run growth (I4)
+  max_iter: 200
+
+outputs:
+  - nowcast
+  - news                        # against the previous snapshot
+  - density                     # predictive distribution (I5)
+  - diagnostics                 # DFM diagnostics (I9)
+  - report_html
+
+snapshot_dir: ./snapshots
+random_state: 0

@@ -1,0 +1,26 @@
+name: simulated_dfm
+title: Simulated mixed-frequency dynamic factor model
+description: Monthly indicators driven by AR(1) common factors and a quarterly target linked to its
+  latent monthly counterpart by the Mariano-Murasawa (1, 2, 3, 2, 1)/3 restriction, generated
+  deterministically (seed 0) with known parameters, for tests and tutorials.
+loader: load_simulated_dfm
+target: gdp
+url: ''
+sources:
+- nowcastbox.datasets._simulated.simulate_mixed_frequency_dfm (generated on load, no data file)
+license: MIT (generated data, part of nowcastbox)
+citation: 'Data-generating process: Giannone, D., Reichlin, L. & Small, D. (2008), Journal of Monetary
+  Economics 55(4); Banbura, M. & Modugno, M. (2014), Journal of Applied Econometrics 29(1); Mariano,
+  R. S. & Murasawa, Y. (2003), Journal of Applied Econometrics 18(4).'
+notes: Factors f_t = A f_{t-1} + u_t with A = diag(0.8..0.4) and unit stationary variance; x_it =
+  lambda_i' f_t + e_it with common-variance shares drawn on [0.3, 0.8]; the latent monthly target has
+  share 0.7. Indicators have publication lags of 0-2 months (delays 5/35/65 days) and the last quarter
+  of the target (delay 45 days) is unobserved, so as_of(end of sample + 5 days) reproduces the ragged
+  edge. True parameters are in Dataset.metadata['true_params'].
+summary:
+  n_series: 21
+  start: 2000-01
+  end: 2019-12
+  frequencies:
+    M: 20
+    Q: 1

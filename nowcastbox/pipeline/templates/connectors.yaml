@@ -1,0 +1,52 @@
+# nowcastbox pipeline spec: live Brazilian data from the BCB/SGS and IBGE/SIDRA APIs
+# (needs internet access; responses are cached on disk).
+name: brazil_live
+target: pib
+
+data:
+  source: connectors
+  start: 2012-01
+  vintage: today
+  series:
+    pib:
+      source: ibge
+      table: 1621
+      variable: 584
+      classifications: {11255: 90707}
+      frequency: Q
+      transform: qoq
+      delay: 62
+      blocks: [global, real]
+      category: hard
+    ibc_br:
+      source: bcb
+      code: 24364
+      frequency: M
+      transform: dlog
+      delay: 45
+      blocks: [global, real]
+      category: hard
+    ipca:
+      source: bcb
+      code: 433
+      frequency: M
+      transform: level
+      delay: 10
+      blocks: [global]
+      category: other
+    selic:
+      source: bcb
+      code: 4189
+      frequency: M
+      transform: diff
+      delay: 1
+      blocks: [global]
+      category: financial
+
+model:
+  type: MixedFreqDFM
+  factors: {global: 1, real: 1}
+  max_iter: 200
+
+outputs: [nowcast, news, density, report_html]
+snapshot_dir: ./snapshots

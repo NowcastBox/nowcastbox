@@ -1,0 +1,1255 @@
+title: Brazilian nowcasting panel (BCB, IBGE, IPEA)
+description: 'Monthly and quarterly Brazilian indicators from 2003 to the latest release for nowcasting
+  quarterly GDP: national accounts (target: seasonally adjusted GDP volume index, QoQ growth), IBC-Br,
+  industrial production, retail and services surveys, labour market, external trade, prices, money, credit,
+  fiscal, financial variables and Focus survey expectations. Values are in levels as published; the legend
+  gives the named stationarity transformation.'
+loader: load_brazil_nowcast
+target: pib
+url: https://www.bcb.gov.br/estatisticas ; https://sidra.ibge.gov.br ; http://www.ipeadata.gov.br
+sources:
+- Banco Central do Brasil - SGS (dadosabertos.bcb.gov.br), ODbL
+- Banco Central do Brasil - Focus market expectations (Olinda API), ODbL
+- IBGE - SIDRA (sidra.ibge.gov.br), free use with attribution
+- IPEADATA (ipeadata.gov.br), free use citing IPEA and the original source (EPE/Eletrobras, ANP, SECEX/MDIC,
+  Receita Federal, Ministry of Labour)
+license: 'Data: BCB series under the Open Data Commons Open Database License (ODbL 1.0) as published on
+  dadosabertos.bcb.gov.br; IBGE and IPEADATA public data, free reuse with attribution of the source. Only
+  open-license sources are included.'
+citation: 'Banco Central do Brasil (SGS, Focus); IBGE (SIDRA: Contas Nacionais Trimestrais, PIM-PF, PMC,
+  PMS, IPCA, INPC, IPP, PNAD Continua); IPEA (IPEADATA). Compiled by nowcastbox (scripts/build_datasets/build_brazil_nowcast.py).'
+notes: Delays are stylised typical publication lags (days after the end of the reference month/quarter)
+  from the 2024-2026 release calendars; GDP release dates are available exactly in load_brazil_calendar().
+  Seasonally adjusted series are used where the source publishes them; for unadjusted series the legend
+  proposes 12-month transformations (dlog_yoy, annual_diff). The seasonal adjustment and the whole history
+  of each series correspond to the latest vintage (no real-time data, see load_brazil_vintages for GDP).
+  Focus constant-horizon expectations weight the current and next calendar year forecasts by (13-m)/12
+  and (m-1)/12 (Dovern, Fritsche & Slacalek, 2012).
+excluded_for_license:
+- series: FGV confidence indices, IGP-M/IGP-DI/IPA
+  reason: FGV terms restrict redistribution
+- series: CNI ICEI, industrial survey indicators
+  reason: third-party (CNI) terms unclear
+- series: ANFAVEA vehicle production/sales (SGS 1373, 1378)
+  reason: third-party (ANFAVEA) terms unclear
+- series: FENABRAVE dealer sales (SGS 7384-7389)
+  reason: third-party (FENABRAVE) terms unclear
+- series: Fecomercio consumer confidence (SGS 4393-4395)
+  reason: third-party (Fecomercio-SP) terms unclear
+- series: ABPO corrugated cardboard, Aco Brasil steel (SGS 7357)
+  reason: third-party associations, terms unclear
+dropped: []
+built:
+  date: '2026-10-01'
+  script: scripts/build_datasets/build_brazil_nowcast.py
+  retrieved: '2026-10-01'
+name: brazil_nowcast
+files:
+  data:
+    path: brazil_nowcast.csv.gz
+    sha256: bf67431b13b44189c5d221274748b4f362deebf5f3cb9948979166dd1fe6b503
+    format: csv.gz (wide; period column YYYY-MM; quarterly values in 3rd month)
+    n_rows: 285
+    n_columns: 99
+summary:
+  n_series: 99
+  start: 2003-01
+  end: 2026-09
+  frequencies:
+    Q: 10
+    M: 89
+series:
+- name: pib
+  description: GDP at market prices - chained quarterly volume index, seasonally adjusted (nowcasting
+    target; transform gives QoQ SA growth)
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=90707
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: pib_agropecuaria
+  description: 'Gross value added: agriculture - chained quarterly volume index, seasonally adjusted'
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=90687
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: pib_industria
+  description: 'Gross value added: industry - chained quarterly volume index, seasonally adjusted'
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=90691
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: pib_servicos
+  description: 'Gross value added: services - chained quarterly volume index, seasonally adjusted'
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=90696
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: consumo_familias
+  description: Household consumption - chained quarterly volume index, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=93404
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: consumo_governo
+  description: Government consumption - chained quarterly volume index, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=93405
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: fbcf
+  description: Gross fixed capital formation - chained quarterly volume index, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=93406
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: exportacoes_cn
+  description: Exports of goods and services - chained quarterly volume index, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=93407
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: importacoes_cn
+  description: Imports of goods and services - chained quarterly volume index, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t1621/v584/c11255=93408
+  frequency: Q
+  transform: qoq
+  legacy_code: '7'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100), seasonally adjusted
+  first_observation: 2003-03
+- name: pib_nsa
+  description: GDP at market prices - chained quarterly volume index, not seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t1620/v583/c11255=90707
+  frequency: Q
+  transform: yoy
+  legacy_code: '6'
+  delay_days: 62
+  blocks: global;real
+  category: hard
+  units: index (1995=100)
+  first_observation: 2003-03
+- name: ibc_br
+  description: IBC-Br, Central Bank economic activity index, seasonally adjusted
+  source: BCB/SGS
+  source_code: '24364'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 46
+  blocks: global;real
+  category: hard
+  units: index (2002=100), SA
+  first_observation: 2003-01
+- name: ibc_br_agropecuaria
+  description: IBC-Br agriculture component, seasonally adjusted
+  source: BCB/SGS
+  source_code: '29602'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 46
+  blocks: global;real
+  category: hard
+  units: index, SA
+  first_observation: 2003-01
+- name: ibc_br_industria
+  description: IBC-Br industry component, seasonally adjusted
+  source: BCB/SGS
+  source_code: '29604'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 46
+  blocks: global;real
+  category: hard
+  units: index, SA
+  first_observation: 2003-01
+- name: ibc_br_servicos
+  description: IBC-Br services component, seasonally adjusted
+  source: BCB/SGS
+  source_code: '29606'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 46
+  blocks: global;real
+  category: hard
+  units: index, SA
+  first_observation: 2003-01
+- name: pim_geral
+  description: Industrial production (PIM-PF) - general industry, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129314
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_extrativa
+  description: Industrial production (PIM-PF) - extractive industries, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129315
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_transformacao
+  description: Industrial production (PIM-PF) - manufacturing, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129316
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_alimentos
+  description: Industrial production (PIM-PF) - food products, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129317
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_derivados_petroleo
+  description: Industrial production (PIM-PF) - coke and petroleum products, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129326
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_quimicos
+  description: Industrial production (PIM-PF) - chemicals, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=56689
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_metalurgia
+  description: Industrial production (PIM-PF) - basic metals, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129333
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_maquinas
+  description: Industrial production (PIM-PF) - machinery and equipment, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129337
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_veiculos
+  description: Industrial production (PIM-PF) - motor vehicles, trailers and bodies, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8888/v12607/c544=129338
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_bens_capital
+  description: Industrial production (PIM-PF) - capital goods, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8887/v12607/c543=129278
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_bens_intermediarios
+  description: Industrial production (PIM-PF) - intermediate goods, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8887/v12607/c543=129283
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_bens_consumo_duraveis
+  description: Industrial production (PIM-PF) - durable consumer goods, seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8887/v12607/c543=129301
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pim_bens_consumo_semi_nao_duraveis
+  description: Industrial production (PIM-PF) - semi-durable and non-durable consumer goods, seasonally
+    adjusted
+  source: IBGE/SIDRA
+  source_code: t8887/v12607/c543=129305
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: index (2022=100), seasonally adjusted
+  first_observation: 2003-01
+- name: pmc_varejo
+  description: Retail trade sales volume (PMC), seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t8880/v7170/c11046=56734
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 42
+  blocks: global;real
+  category: hard
+  units: index (2022=100), SA
+  first_observation: 2003-01
+- name: pmc_ampliado
+  description: Extended retail trade sales volume (PMC, incl. vehicles and construction materials), seasonally
+    adjusted
+  source: IBGE/SIDRA
+  source_code: t8881/v7170/c11046=56736
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 42
+  blocks: global;real
+  category: hard
+  units: index (2022=100), SA
+  first_observation: 2003-01
+- name: pmc_supermercados
+  description: 'Retail sales volume: hyper/supermarkets, food, beverages and tobacco, SA'
+  source: IBGE/SIDRA
+  source_code: t8882/v7170/c11046=56734/c85=90672
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 42
+  blocks: global;real
+  category: hard
+  units: index (2022=100), SA
+  first_observation: 2003-01
+- name: pmc_moveis_eletro
+  description: 'Retail sales volume: furniture and household appliances, SA'
+  source: IBGE/SIDRA
+  source_code: t8882/v7170/c11046=56734/c85=2759
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 42
+  blocks: global;real
+  category: hard
+  units: index (2022=100), SA
+  first_observation: 2003-01
+- name: pmc_combustiveis
+  description: 'Retail sales volume: fuels and lubricants, SA'
+  source: IBGE/SIDRA
+  source_code: t8882/v7170/c11046=56734/c85=90671
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 42
+  blocks: global;real
+  category: hard
+  units: index (2022=100), SA
+  first_observation: 2003-01
+- name: pms_volume
+  description: Services volume (PMS), seasonally adjusted
+  source: IBGE/SIDRA
+  source_code: t5906/v7168/c11046=56726
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 43
+  blocks: global;real
+  category: hard
+  units: index (2022=100), SA
+  first_observation: 2011-01
+- name: ipea_fbcf
+  description: IPEA monthly indicator of gross fixed capital formation, SA
+  source: IPEADATA
+  source_code: GAC12_INDFBCFDESSAZ12
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 95
+  blocks: global;real
+  category: hard
+  units: index (1995=100), SA
+  first_observation: 2003-01
+- name: ipea_fbcf_construcao
+  description: 'IPEA monthly GFCF indicator: construction, SA'
+  source: IPEADATA
+  source_code: GAC12_INDFBCFCCDESSAZ12
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 95
+  blocks: global;real
+  category: hard
+  units: index (1995=100), SA
+  first_observation: 2003-01
+- name: ipea_consumo_aparente_bk
+  description: IPEA apparent consumption of capital goods (machinery), SA
+  source: IPEADATA
+  source_code: GAC12_FBKFCAMIDESSAZ12
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 63
+  blocks: global;real
+  category: hard
+  units: index (2012=100), SA
+  first_observation: 2003-01
+- name: ipea_consumo_aparente_industria
+  description: IPEA apparent consumption of industrial goods, SA
+  source: IPEADATA
+  source_code: GAC12_CAIGDESSAZ12
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 63
+  blocks: global;real
+  category: hard
+  units: index (2012=100), SA
+  first_observation: 2003-01
+- name: energia_consumo_total
+  description: Electricity consumption, total (EPE/Eletrobras, via IPEADATA)
+  source: IPEADATA
+  source_code: ELETRO12_CEET12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: GWh
+  first_observation: 2003-01
+- name: energia_consumo_industria
+  description: Electricity consumption, industry (EPE/Eletrobras, via IPEADATA)
+  source: IPEADATA
+  source_code: ELETRO12_CEEIND12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: GWh
+  first_observation: 2003-01
+- name: energia_consumo_comercio
+  description: Electricity consumption, commerce (EPE/Eletrobras, via IPEADATA)
+  source: IPEADATA
+  source_code: ELETRO12_CEECOM12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: GWh
+  first_observation: 2003-01
+- name: energia_consumo_residencial
+  description: Electricity consumption, residential (EPE/Eletrobras, via IPEADATA)
+  source: IPEADATA
+  source_code: ELETRO12_CEERES12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: GWh
+  first_observation: 2003-01
+- name: anp_diesel
+  description: Diesel oil consumption, daily average (ANP, via IPEADATA)
+  source: IPEADATA
+  source_code: ANP12_COLDIE12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: barrels/day
+  first_observation: 2003-01
+- name: anp_petroleo_producao
+  description: Oil production, daily average (ANP, via IPEADATA)
+  source: IPEADATA
+  source_code: ANP12_PDPET12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: barrels/day
+  first_observation: 2003-01
+- name: arrecadacao_federal
+  description: Federal tax revenue, gross (Receita Federal, via IPEADATA)
+  source: IPEADATA
+  source_code: SRF12_TOTGER12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;real
+  category: hard
+  units: R$ (current)
+  first_observation: 2003-01
+- name: desocupacao
+  description: Unemployment rate, PNAD Continua (rolling quarter ending in the month)
+  source: IBGE/SIDRA
+  source_code: t6381/v4099
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: '%'
+  first_observation: 2012-03
+- name: desocupacao_sa
+  description: Unemployment rate, PNAD Continua, monthly and seasonally adjusted (IPEA)
+  source: IPEADATA
+  source_code: PNADC12_TDESOCMD12
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 33
+  blocks: global;real
+  category: hard
+  units: '%'
+  first_observation: 2012-01
+- name: ocupacao_sa
+  description: Employment-to-population ratio, PNAD Continua, monthly and seasonally adjusted (IPEA)
+  source: IPEADATA
+  source_code: PNADC12_NOCUPMD12
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 33
+  blocks: global;real
+  category: hard
+  units: '%'
+  first_observation: 2012-01
+- name: massa_salarial_sa
+  description: Real usual earnings mass, PNAD Continua, monthly and seasonally adjusted (IPEA)
+  source: IPEADATA
+  source_code: PNADC12_MRTHMD12
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 33
+  blocks: global;real
+  category: hard
+  units: R$
+  first_observation: 2012-01
+- name: caged_saldo
+  description: Formal job creation, net (Novo Caged, with late declarations; Ministry of Labour)
+  source: IPEADATA
+  source_code: CAGED12_SALDONAJU12
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 30
+  blocks: global;real
+  category: hard
+  units: persons
+  first_observation: 2020-01
+- name: exportacoes_bp
+  description: Exports of goods, balance of payments (BPM6)
+  source: BCB/SGS
+  source_code: '22708'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;real
+  category: hard
+  units: US$ million
+  first_observation: 2003-01
+- name: importacoes_bp
+  description: Imports of goods, balance of payments (BPM6)
+  source: BCB/SGS
+  source_code: '22709'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;real
+  category: hard
+  units: US$ million
+  first_observation: 2003-01
+- name: balanca_comercial
+  description: Trade balance (goods), balance of payments (BPM6)
+  source: BCB/SGS
+  source_code: '22707'
+  frequency: M
+  transform: annual_diff
+  legacy_code: '5'
+  delay_days: 25
+  blocks: global;real
+  category: hard
+  units: US$ million
+  first_observation: 2003-01
+- name: transacoes_correntes
+  description: Current account balance (BPM6)
+  source: BCB/SGS
+  source_code: '22701'
+  frequency: M
+  transform: annual_diff
+  legacy_code: '5'
+  delay_days: 25
+  blocks: global;real
+  category: hard
+  units: US$ million
+  first_observation: 2003-01
+- name: secex_exportacoes
+  description: Exports, FOB (SECEX/MDIC, via IPEADATA)
+  source: IPEADATA
+  source_code: SECEX12_XVTOT12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;real
+  category: hard
+  units: US$ (FOB)
+  first_observation: 2003-01
+- name: secex_importacoes
+  description: Imports, FOB (SECEX/MDIC, via IPEADATA)
+  source: IPEADATA
+  source_code: SECEX12_MVTOT12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;real
+  category: hard
+  units: US$ (FOB)
+  first_observation: 2003-01
+- name: secex_importacoes_bk
+  description: Imports of capital goods, FOB (SECEX/MDIC, via IPEADATA)
+  source: IPEADATA
+  source_code: SECEX12_MBENCAPGCE12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;real
+  category: hard
+  units: US$ (FOB)
+  first_observation: 2003-01
+- name: secex_importacoes_intermediarios
+  description: Imports of intermediate goods, FOB (SECEX/MDIC, via IPEADATA)
+  source: IPEADATA
+  source_code: SECEX12_MINTGCE12
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;real
+  category: hard
+  units: US$ (FOB)
+  first_observation: 2003-01
+- name: ipca
+  description: IPCA consumer price index
+  source: IBGE/SIDRA
+  source_code: t1737/v2266
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: index (Dec 1993=100)
+  first_observation: 2003-01
+- name: inpc
+  description: INPC consumer price index
+  source: IBGE/SIDRA
+  source_code: t1736/v2289
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: index (Dec 1993=100)
+  first_observation: 2003-01
+- name: ipca15
+  description: IPCA-15 consumer price index (released within the reference month)
+  source: IBGE/SIDRA
+  source_code: t3065/v1117
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 0
+  blocks: global;nominal
+  category: hard
+  units: index (Dec 1993=100)
+  first_observation: 2003-01
+- name: ipp_industria
+  description: Producer price index (IPP), general industry
+  source: IBGE/SIDRA
+  source_code: t6903/v10008/c842=46608
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 30
+  blocks: global;nominal
+  category: hard
+  units: index (Dec 2018=100)
+  first_observation: 2013-12
+- name: ipca_livres
+  description: IPCA market (free) prices, monthly change
+  source: BCB/SGS
+  source_code: '11428'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_monitorados
+  description: IPCA administered prices, monthly change
+  source: BCB/SGS
+  source_code: '4449'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_servicos
+  description: IPCA services, monthly change
+  source: BCB/SGS
+  source_code: '10844'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_comercializaveis
+  description: IPCA tradables, monthly change
+  source: BCB/SGS
+  source_code: '4447'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_nao_comercializaveis
+  description: IPCA non-tradables, monthly change
+  source: BCB/SGS
+  source_code: '4448'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_duraveis
+  description: IPCA durable goods, monthly change
+  source: BCB/SGS
+  source_code: '10843'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_nucleo_ma
+  description: 'IPCA core: smoothed trimmed means, monthly change'
+  source: BCB/SGS
+  source_code: '4466'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_nucleo_ex
+  description: 'IPCA core: exclusion (ex administered and food at home), monthly change'
+  source: BCB/SGS
+  source_code: '11427'
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '% m/m'
+  first_observation: 2003-01
+- name: ipca_difusao
+  description: IPCA diffusion index
+  source: BCB/SGS
+  source_code: '21379'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 10
+  blocks: global;nominal
+  category: hard
+  units: '%'
+  first_observation: 2003-01
+- name: base_monetaria
+  description: Monetary base (end of period)
+  source: BCB/SGS
+  source_code: '1788'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;nominal
+  category: financial
+  units: R$ thousand
+  first_observation: 2003-01
+- name: m1
+  description: M1 money supply (end of period, new methodology)
+  source: BCB/SGS
+  source_code: '27791'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;nominal
+  category: financial
+  units: R$ thousand
+  first_observation: 2003-01
+- name: m2
+  description: M2 money supply (end of period, new methodology)
+  source: BCB/SGS
+  source_code: '27810'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;nominal
+  category: financial
+  units: R$ thousand
+  first_observation: 2003-01
+- name: m3
+  description: M3 money supply (end of period, new methodology)
+  source: BCB/SGS
+  source_code: '27813'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;nominal
+  category: financial
+  units: R$ thousand
+  first_observation: 2003-01
+- name: m4
+  description: M4 money supply (end of period, new methodology)
+  source: BCB/SGS
+  source_code: '27815'
+  frequency: M
+  transform: dlog_yoy
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;nominal
+  category: financial
+  units: R$ thousand
+  first_observation: 2003-01
+- name: dlsp_pib
+  description: Net public sector debt, consolidated public sector
+  source: BCB/SGS
+  source_code: '4513'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 30
+  blocks: global;nominal
+  category: hard
+  units: '% of GDP'
+  first_observation: 2003-01
+- name: dbgg_pib
+  description: Gross general government debt (2008 methodology)
+  source: BCB/SGS
+  source_code: '13762'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 30
+  blocks: global;nominal
+  category: hard
+  units: '% of GDP'
+  first_observation: 2006-12
+- name: resultado_primario_12m
+  description: Public sector borrowing requirement, primary result, 12-month sum, consolidated public
+    sector (positive = deficit)
+  source: BCB/SGS
+  source_code: '5793'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 30
+  blocks: global;nominal
+  category: hard
+  units: '% of GDP'
+  first_observation: 2003-01
+- name: selic
+  description: Selic policy rate, monthly accumulated, annualised (252-day basis)
+  source: BCB/SGS
+  source_code: '4189'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;financial
+  category: financial
+  units: '% p.a.'
+  first_observation: 2003-01
+- name: cambio_ptax
+  description: Exchange rate R$/US$ (PTAX, selling), monthly average
+  source: BCB/SGS
+  source_code: '3698'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;financial
+  category: financial
+  units: R$/US$
+  first_observation: 2003-01
+- name: cambio_efetivo_real
+  description: Real effective exchange rate index (IPCA-deflated)
+  source: BCB/SGS
+  source_code: '11752'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 75
+  blocks: global;financial
+  category: financial
+  units: index (Jun 1994=100)
+  first_observation: 2003-01
+- name: reservas_internacionais
+  description: International reserves, liquidity concept, end of month
+  source: BCB/SGS
+  source_code: '3546'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 3
+  blocks: global;financial
+  category: financial
+  units: US$ million
+  first_observation: 2003-01
+- name: icbr
+  description: IC-Br commodity price index (R$), total
+  source: BCB/SGS
+  source_code: '27574'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;financial
+  category: financial
+  units: index (Dec 2005=100)
+  first_observation: 2003-01
+- name: icbr_agro
+  description: IC-Br commodity price index (R$), agriculture
+  source: BCB/SGS
+  source_code: '27575'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;financial
+  category: financial
+  units: index (Dec 2005=100)
+  first_observation: 2003-01
+- name: icbr_metal
+  description: IC-Br commodity price index (R$), metals
+  source: BCB/SGS
+  source_code: '27576'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;financial
+  category: financial
+  units: index (Dec 2005=100)
+  first_observation: 2003-01
+- name: icbr_energia
+  description: IC-Br commodity price index (R$), energy
+  source: BCB/SGS
+  source_code: '27577'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;financial
+  category: financial
+  units: index (Dec 2005=100)
+  first_observation: 2003-01
+- name: credito_saldo_total
+  description: Credit outstanding, total
+  source: BCB/SGS
+  source_code: '20539'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million
+  first_observation: 2003-01
+- name: credito_saldo_pj
+  description: Credit outstanding, non-financial corporations
+  source: BCB/SGS
+  source_code: '20540'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million
+  first_observation: 2007-03
+- name: credito_saldo_pf
+  description: Credit outstanding, households
+  source: BCB/SGS
+  source_code: '20541'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million
+  first_observation: 2007-03
+- name: credito_saldo_livres
+  description: Credit outstanding, non-earmarked (free) credit
+  source: BCB/SGS
+  source_code: '20542'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million
+  first_observation: 2007-03
+- name: credito_concessoes_sa
+  description: New credit operations, total, seasonally adjusted
+  source: BCB/SGS
+  source_code: '24439'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million, SA
+  first_observation: 2011-03
+- name: credito_concessoes_pf_sa
+  description: New credit operations, households, seasonally adjusted
+  source: BCB/SGS
+  source_code: '24441'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million, SA
+  first_observation: 2011-03
+- name: credito_concessoes_pj_sa
+  description: New credit operations, corporations, seasonally adjusted
+  source: BCB/SGS
+  source_code: '24440'
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: R$ million, SA
+  first_observation: 2011-03
+- name: credito_taxa_juros
+  description: Average interest rate on new credit operations, total
+  source: BCB/SGS
+  source_code: '20714'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: '% p.a.'
+  first_observation: 2011-03
+- name: credito_spread
+  description: Average spread on new credit operations, total
+  source: BCB/SGS
+  source_code: '20783'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: p.p.
+  first_observation: 2011-03
+- name: credito_inadimplencia
+  description: Non-performing loans (90+ days), total
+  source: BCB/SGS
+  source_code: '21082'
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 28
+  blocks: global;financial
+  category: financial
+  units: '%'
+  first_observation: 2011-03
+- name: investimento_direto_pais
+  description: Direct investment liabilities (FDI into Brazil), net, monthly
+  source: BCB/SGS
+  source_code: '22885'
+  frequency: M
+  transform: annual_diff
+  legacy_code: '5'
+  delay_days: 25
+  blocks: global;financial
+  category: financial
+  units: US$ million
+  first_observation: 2003-01
+- name: focus_pib
+  description: 'Focus survey: median expected real GDP growth, constant 12-month horizon (weighted current/next
+    calendar year), monthly average'
+  source: BCB/Focus (Olinda)
+  source_code: ExpectativasMercadoAnuais:PIB Total
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 0
+  blocks: global;soft
+  category: soft
+  units: '% (annual growth)'
+  first_observation: 2003-01
+- name: focus_ipca_12m
+  description: 'Focus survey: median expected IPCA inflation over the next 12 months (smoothed), monthly
+    average'
+  source: BCB/Focus (Olinda)
+  source_code: ExpectativasMercadoInflacao12Meses:IPCA
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 0
+  blocks: global;soft
+  category: soft
+  units: '% (12 months ahead)'
+  first_observation: 2003-01

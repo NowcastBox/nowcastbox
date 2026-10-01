@@ -1,0 +1,3 @@
+# Benchmarks
+
+::: nowcastbox.benchmarks

@@ -1,0 +1,26 @@
+# nowcastbox pipeline spec: small, fast example on the simulated dataset.
+# Run with: nowcastbox run simulated.yaml
+name: simulated
+target: gdp
+
+data:
+  source: simulated_dfm
+  vintage: 2019-11-15           # pseudo real-time vintage (publication delays of the dataset)
+
+preprocessing:
+  enabled: false                # the simulated series are already stationary
+
+model:
+  type: MixedFreqDFM
+  factors: 1
+  max_iter: 50
+
+outputs:
+  nowcast: true
+  news: {against: 2019-10-15}   # news since an earlier vintage of the same data
+  density: {n_boot: 0}
+  diagnostics: true
+  report_html: {plotlyjs: cdn}
+
+snapshot_dir: ./snapshots
+random_state: 0

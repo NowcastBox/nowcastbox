@@ -1,0 +1,3 @@
+# Vintages
+
+::: nowcastbox.vintages

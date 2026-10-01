@@ -1,0 +1,19 @@
+{
+  "bpanel_transform_brgdp": 0.533,
+  "bpanel_default_brgdp": 0.428000000000001,
+  "bpanel_default_usgdp": 1.32,
+  "bpanel_aggregate_usgdp": 1.535,
+  "usgdp_2s": 1.584,
+  "usgdp_2s_agg": 1.643,
+  "simulated_2s_agg": 0.193000000000001,
+  "simulated_2s": 0.238,
+  "nyfed_em": 56.439,
+  "simulated_em": 2.479,
+  "prtdb_brgdp_per_vintage": 0.0601583333333333,
+  "prtdb_nyfed_per_vintage": 0.0672268518518519,
+  "icfactors_usgdp": 0.102999999999994,
+  "icfactors_brgdp": 0.0449999999999999,
+  "icfactors_simulated": 0.0120000000000005,
+  "icshocks_usgdp": 0.0190000000000055,
+  "timed_on": "2026-10-01 04:52"
+}

@@ -1,0 +1,62 @@
+name: us_grs_like
+title: GRS (2008)-like US panel built from FRED-MD
+description: 'Documented approximation of the Giannone, Reichlin & Small (2008) panel (~200 monthly US
+  series + quarterly GDP, 1982-2004): the FRED-MD series with their FRED-MD transformations and real GDP,
+  restricted by default to 1982-01..2004-12, with stylised release delays.'
+loader: load_us_grs_like
+target: GDPC1
+url: https://www.stlouisfed.org/research/economists/mccracken/fred-databases
+license: FRED-MD/FRED-QD are distributed freely by the Federal Reserve Bank of St. Louis for research.
+  The shipped series come from US government agencies (BEA, BLS, Census, Federal Reserve Board, Treasury;
+  public domain) or are constructed by McCracken & Ng; series under third-party copyright are excluded
+  (see 'excluded_for_license').
+citation: 'McCracken, M. W. & Ng, S. (2016). FRED-MD: A Monthly Database for Macroeconomic Research. Journal
+  of Business & Economic Statistics, 34(4), 574-589. McCracken, M. W. & Ng, S. (2020). FRED-QD: A Quarterly
+  Database for Macroeconomic Research. NBER Working Paper 26872.'
+sources:
+- 'FRED-MD vintage 2026-08 (revised): https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/research/fred-md/monthly/2026-rev-08-md.csv'
+- 'FRED-QD vintage 2026-08 (revised): https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/research/fred-md/quarterly/2026-rev-08-qd.csv'
+excluded_for_license:
+- series: S&P 500
+  reason: S&P Dow Jones Indices copyright
+- series: S&P div yield
+  reason: S&P Dow Jones Indices copyright
+- series: S&P PE ratio
+  reason: S&P Dow Jones Indices copyright
+- series: AAA
+  reason: Moody's copyright
+- series: BAA
+  reason: Moody's copyright
+- series: AAAFFM
+  reason: Moody's copyright (spread built on AAA)
+- series: BAAFFM
+  reason: Moody's copyright (spread built on BAA)
+- series: UMCSENTx
+  reason: University of Michigan Surveys of Consumers copyright
+- series: VIXCLSx
+  reason: Cboe copyright
+notes: 'The original GRS (2008) replication files are not available from a primary source (the authors''
+  former web pages are offline; copies inside GPL software are not used). This dataset is therefore NOT
+  the original panel: it has ~120 instead of ~200 series, current (revised) vintages and FRED-MD definitions.
+  It shares the data file of ''us_fred_md''.'
+default_sample:
+  start: 1982-01
+  end: 2004-12
+files:
+  data:
+    path: us_fred_md.csv.gz
+    sha256: 4dc86d0cc140ecca9deddfc42554cac22800d2f1cae2a3a43297c7effe94ae22
+    format: csv.gz (wide; period column YYYY-MM; quarterly values in 3rd month)
+    n_rows: 811
+    n_columns: 118
+summary:
+  n_series: 118
+  start: 1959-01
+  end: 2026-07
+  frequencies:
+    M: 117
+    Q: 1
+vintage: 2026-08 (revised)
+built:
+  date: '2026-10-01'
+  script: scripts/build_datasets/build_us_fred_md.py

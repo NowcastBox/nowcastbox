@@ -1,0 +1,245 @@
+site_name: NowcastBox
+site_description: Nowcasting with dynamic factor models in Python
+site_author: Gustavo Haase and Alexandre Leão Sanches
+site_url: https://nowcastbox.github.io/nowcastbox/
+
+repo_name: NowcastBox/nowcastbox
+repo_url: https://github.com/NowcastBox/nowcastbox
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2026 Gustavo Haase and Alexandre Leão Sanches — MIT License
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+plugins:
+  - search:
+      lang: en
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+            docstring_section_style: table
+            show_root_heading: true
+            show_source: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            inherited_members: false
+            members_order: source
+            group_by_category: true
+            show_category_heading: true
+            show_if_no_docstring: false
+            annotations_path: brief
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/NowcastBox/nowcastbox
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/nowcastbox/
+
+# Every page of docs/datasets/ and docs/validation/ is in the navigation; pages that
+# are not in the navigation are reported at INFO level only.
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+  nav:
+    omitted_files: info
+    not_found: warn
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+      - Core concepts: getting-started/core-concepts.md
+      - Choosing a method: getting-started/choosing-a-method.md
+  - User guide:
+      - user-guide/index.md
+      - Data:
+          - Mixed-frequency data: user-guide/data/mixed-frequency-data.md
+          - Transformations: user-guide/data/transformations.md
+          - Outliers and missing data: user-guide/data/outliers-missing.md
+          - Aggregation and frequencies: user-guide/data/aggregation.md
+      - Vintages:
+          - Pseudo real-time data: user-guide/vintages/pseudo-real-time.md
+          - Release calendar: user-guide/vintages/release-calendar.md
+          - Real-time vintages: user-guide/vintages/real-vintages.md
+      - Models:
+          - Two-step DFM: user-guide/models/two-step-dfm.md
+          - EM mixed-frequency DFM: user-guide/models/em-dfm.md
+          - Blocks: user-guide/models/blocks.md
+          - Robust estimation: user-guide/models/robust.md
+          - Time-varying long-run mean: user-guide/models/long-run-mean.md
+          - Bridge equations: user-guide/models/bridge.md
+          - Benchmarks: user-guide/models/benchmarks.md
+      - Selection:
+          - Number of factors: user-guide/selection/number-of-factors.md
+          - Number of shocks: user-guide/selection/number-of-shocks.md
+          - Targeted predictors: user-guide/selection/targeted-predictors.md
+      - News and explainability:
+          - News decomposition: user-guide/news/news-decomposition.md
+          - Nowcast tracker: user-guide/news/tracker.md
+          - Level contributions: user-guide/news/level-contributions.md
+      - Density nowcasts:
+          - Predictive distributions: user-guide/density/density-nowcasts.md
+          - Scoring densities: user-guide/density/scoring.md
+      - Evaluation:
+          - Backtesting: user-guide/evaluation/backtesting.md
+          - Accuracy metrics: user-guide/evaluation/metrics.md
+          - Forecast comparison tests: user-guide/evaluation/forecast-comparison-tests.md
+          - Experiments: user-guide/evaluation/experiments.md
+      - Diagnostics: user-guide/diagnostics.md
+      - Data sources:
+          - user-guide/data-sources/index.md
+          - BCB (SGS): user-guide/data-sources/bcb.md
+          - IBGE (SIDRA): user-guide/data-sources/ibge.md
+          - IPEADATA: user-guide/data-sources/ipea.md
+          - FRED / ALFRED: user-guide/data-sources/fred.md
+      - Visualization and reports:
+          - Plots: user-guide/visualization/plots.md
+          - HTML reports: user-guide/visualization/reports.md
+      - Pipeline and CLI: user-guide/pipeline-cli.md
+      - Performance: user-guide/performance.md
+  - Theory:
+      - theory/index.md
+      - Dynamic factor models: theory/dfm.md
+      - Kalman filter and smoother: theory/kalman-filter-smoother.md
+      - EM algorithm: theory/em-algorithm.md
+      - Temporal aggregation: theory/mariano-murasawa.md
+      - Bai-Ng criteria: theory/bai-ng.md
+      - News decomposition: theory/news.md
+      - Density nowcasts and scoring: theory/density-scoring.md
+      - Forecast evaluation: theory/forecast-evaluation.md
+      - References: theory/references.md
+  - Datasets:
+      - datasets/index.md
+      - Brazilian nowcasting panel: datasets/brazil_nowcast.md
+      - Brazilian release calendar: datasets/brazil_calendar.md
+      - Brazilian GDP vintages: datasets/brazil_vintages.md
+      - NY Fed panel: datasets/nyfed.md
+      - FRED-MD: datasets/us_fred_md.md
+      - GRS (2008)-like panel: datasets/us_grs_like.md
+      - Simulated DFM: datasets/simulated_dfm.md
+  - Validation:
+      - validation/index.md
+      - Pre-processing: validation/preprocessing.md
+      - Selection: validation/selection.md
+      - Two-step DFM: validation/two_step.md
+      - EM: validation/em.md
+      - statsmodels DynamicFactorMQ: validation/statsmodels.md
+      - Vintages: validation/vintages.md
+      - Performance: validation/performance.md
+      - Reproducing the fixtures: validation/reproducing.md
+  - Comparison:
+      - R package nowcasting: comparison/r-nowcasting.md
+      - statsmodels DynamicFactorMQ: comparison/statsmodels-dynamicfactormq.md
+  - API reference:
+      - api/index.md
+      - Top level (nb.nowcast): api/toplevel.md
+      - Core: api/core.md
+      - Preprocessing: api/preprocessing.md
+      - State space: api/statespace.md
+      - Models: api/models.md
+      - Selection: api/selection.md
+      - Vintages: api/vintages.md
+      - News decomposition (I6): api/news.md
+      - Density nowcasts (I5): api/density.md
+      - Evaluation and scoring: api/evaluation.md
+      - Benchmarks: api/benchmarks.md
+      - Diagnostics (I9): api/diagnostics.md
+      - Data sources: api/data_sources.md
+      - Datasets: api/datasets.md
+      - Visualization: api/visualization.md
+      - Reports: api/reports.md
+      - Experiment: api/experiment.md
+      - Pipeline, CLI and simulation: api/pipeline.md
+  - FAQ: faq.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md

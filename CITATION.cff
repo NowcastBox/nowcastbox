@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use NowcastBox, please cite it as below."
+title: "NowcastBox: Nowcasting with Dynamic Factor Models in Python"
+version: 0.1.0.dev0
+date-released: 2026-10-01
+license: MIT
+repository-code: "https://github.com/NowcastBox/nowcastbox"
+keywords:
+  - nowcasting
+  - dynamic factor models
+  - mixed frequency
+  - Kalman filter
+  - EM algorithm
+  - econometrics
+authors:
+  - family-names: Haase
+    given-names: Gustavo
+    email: gustavo.haase@gmail.com
+    affiliation: "Universidade Católica de Brasília (UCB)"
+  - family-names: Sanches
+    given-names: "Alexandre Leão"
+    affiliation: "Universidade Católica de Brasília (UCB)"

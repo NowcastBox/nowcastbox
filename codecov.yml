@@ -1,0 +1,41 @@
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "80...100"
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 1%
+        if_ci_failed: error
+    patch:
+      default:
+        target: 90%
+        threshold: 1%
+        if_ci_failed: error
+
+flags:
+  core:
+    paths:
+      - nowcastbox/core/
+  statespace:
+    paths:
+      - nowcastbox/statespace/
+
+ignore:
+  - "tests/**/*"
+  - "docs/**/*"
+  - "examples/**/*"
+  - "scripts/**/*"
+  - "benchmarks/**/*"
+  - "paper/**/*"
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false

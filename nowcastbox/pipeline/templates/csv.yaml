@@ -1,0 +1,25 @@
+# nowcastbox pipeline spec: your own data from a CSV file.
+# The file has a date column (first column by default; monthly dates such as 2020-01 or
+# 2020-01-31) and one column per series; quarterly values go in the third month of the
+# quarter. Paths are relative to this file.
+name: my_nowcast
+target: gdp
+
+data:
+  source: csv
+  path: data/panel.csv
+  index_column: date
+  frequency: {gdp: Q}           # others are inferred from the data
+  transform: {gdp: qoq, ip: dlog, pmi: level}
+  delay: {gdp: 60, ip: 40, pmi: 1}   # days after the end of the reference period
+  blocks: {gdp: [global], ip: [global, real], pmi: [global, soft]}
+  # legend: data/legend.csv     # alternatively: name,frequency,transform,delay_days,blocks,category
+  vintage: today
+
+model:
+  type: TwoStepDFM              # Giannone, Reichlin & Small (2008)
+  factors: auto                 # Bai & Ng (2002) IC2
+  aggregate: factors
+
+outputs: [nowcast, density, report_html]
+snapshot_dir: ./snapshots

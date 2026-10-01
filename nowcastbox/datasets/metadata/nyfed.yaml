@@ -1,0 +1,452 @@
+title: NY Fed Staff Nowcast replication panel (US)
+description: 'The public example panel of the FRBNY Staff Nowcast (Bok, Caratelli, Giannone, Sbordone
+  & Tambalotti, 2018): monthly and quarterly US series (1985 onwards) with the NY Fed block structure
+  (global, soft, real, labor), transformations and categories, data vintage 2017-01-27. Target: real GDP
+  (GDPC1).'
+loader: load_nyfed
+target: GDPC1
+url: https://github.com/FRBNY-TimeSeriesAnalysis/Nowcasting
+sources:
+- https://github.com/FRBNY-TimeSeriesAnalysis/Nowcasting - Spec_US_example.xls and data/US/2017-01-27.xls
+  (data downloaded by the NY Fed from FRED, Federal Reserve Bank of St. Louis)
+license: 'Repository files: BSD 3-Clause License, Copyright (c) 2018, Federal Reserve Bank of New York
+  (redistribution with this notice). Underlying series: FRED, from US government agencies and regional
+  Federal Reserve Banks.'
+citation: Bok, B., Caratelli, D., Giannone, D., Sbordone, A. M. & Tambalotti, A. (2018). Macroeconomic
+  Nowcasting and Forecasting with Big Data. Annual Review of Economics, 10, 615-643 (Federal Reserve Bank
+  of New York Staff Report 830).
+notes: 'The NY Fed note that these example files do not exactly reproduce the published Staff Nowcast
+  (data redistribution restrictions). ''nyfed_model'' = 1 marks the 25 series of the example model (Model
+  column of the specification); load_nyfed(model_only=True) keeps only those. Transformations: lin ->
+  level, chg -> diff, pch -> pct_change(1)|scale(100), pca (compounded annual rate) -> log|diff(1)|scale(400),
+  its first-order approximation; the original code is in ''nyfed_transformation''. Delays are stylised
+  typical US publication lags (not part of the NY Fed files).'
+vintage: '2017-01-27'
+license_notice: Copyright (c) 2018, Federal Reserve Bank of New York. All rights reserved. Redistribution
+  and use in source and binary forms, with or without modification, are permitted provided that the conditions
+  of the BSD 3-Clause License are met (see nowcastbox/datasets/licenses/NYFED-BSD-3-Clause.txt).
+name: nyfed
+built:
+  date: '2026-10-01'
+  script: scripts/build_datasets/build_nyfed.py
+files:
+  data:
+    path: nyfed.csv.gz
+    sha256: b03f91bd761ddc2aa9fa45e22e6c6bbd5f4bef60604e1255ead684ca429d38bb
+    format: csv.gz (wide; period column YYYY-MM; quarterly values in 3rd month)
+    n_rows: 385
+    n_columns: 29
+summary:
+  n_series: 29
+  start: 1985-01
+  end: 2017-01
+  frequencies:
+    M: 26
+    Q: 3
+series:
+- name: PAYEMS
+  description: Payroll Employment
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: PAYEMS
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: Thousands of Persons
+  nyfed_transformation: chg
+  nyfed_category: Labor
+  nyfed_model: 1
+- name: JTSJOL
+  description: Job Openings
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: JTSJOL
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 40
+  blocks: global;labor
+  category: hard
+  units: Thousands
+  nyfed_transformation: chg
+  nyfed_category: Labor
+  nyfed_model: 1
+- name: GDPC1
+  description: Real Gross Domestic Product
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: GDPC1
+  frequency: Q
+  transform: log|diff(1)|scale(400)
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;real
+  category: hard
+  units: Chained $, Billions
+  nyfed_transformation: pca
+  nyfed_category: National Accounts
+  nyfed_model: 1
+- name: CPIAUCSL
+  description: Consumer Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: CPIAUCSL
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 14
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: Prices
+  nyfed_model: 1
+- name: DGORDER
+  description: Durable Goods Orders
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: DGORDER
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 27
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: Manufacturing
+  nyfed_model: 1
+- name: HSN1F
+  description: New Home Sales
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: HSN1F
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;real
+  category: hard
+  units: Thousands
+  nyfed_transformation: pch
+  nyfed_category: Housing and Construction
+  nyfed_model: 0
+- name: RSAFS
+  description: Retail Sales
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: RSAFS
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: Retail and Consumption
+  nyfed_model: 1
+- name: UNRATE
+  description: Unemployment Rate
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: UNRATE
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: '%'
+  nyfed_transformation: chg
+  nyfed_category: Labor
+  nyfed_model: 1
+- name: HOUST
+  description: Housing Starts
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: HOUST
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;real
+  category: hard
+  units: Thousands of Units
+  nyfed_transformation: pch
+  nyfed_category: Housing and Construction
+  nyfed_model: 1
+- name: INDPRO
+  description: Industrial Production
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: INDPRO
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;real
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: Manufacturing
+  nyfed_model: 1
+- name: PPIFIS
+  description: Producer Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: PPIFIS
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 13
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: Prices
+  nyfed_model: 0
+- name: DSPIC96
+  description: Personal Income
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: DSPIC96
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;real
+  category: hard
+  units: Chained $, Billions
+  nyfed_transformation: pch
+  nyfed_category: National Accounts
+  nyfed_model: 1
+- name: BOPTEXP
+  description: Exports
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: BOPTEXP
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: International Trade
+  nyfed_model: 1
+- name: BOPTIMP
+  description: Imports
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: BOPTIMP
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: International Trade
+  nyfed_model: 1
+- name: WHLSLRIMSA
+  description: Wholesale Inventories
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: WHLSLRIMSA
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 40
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: Manufacturing
+  nyfed_model: 0
+- name: TTLCONS
+  description: Construction Spending
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: TTLCONS
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 31
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: Housing and Construction
+  nyfed_model: 1
+- name: IR
+  description: Import Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: IR
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 14
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: International Trade
+  nyfed_model: 1
+- name: CPILFESL
+  description: Core Consumer Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: CPILFESL
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 14
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: Prices
+  nyfed_model: 1
+- name: PCEPILFE
+  description: Core PCE Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: PCEPILFE
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 29
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: Prices
+  nyfed_model: 1
+- name: PCEPI
+  description: PCE Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: PCEPI
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 29
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: Prices
+  nyfed_model: 1
+- name: PERMIT
+  description: Building Permits
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: PERMIT
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 18
+  blocks: global;real
+  category: hard
+  units: Thousands of Units
+  nyfed_transformation: chg
+  nyfed_category: Housing and Construction
+  nyfed_model: 1
+- name: TCU
+  description: Capacity Utilization Rate
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: TCU
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 16
+  blocks: global;real
+  category: hard
+  units: '%'
+  nyfed_transformation: chg
+  nyfed_category: Manufacturing
+  nyfed_model: 1
+- name: BUSINV
+  description: Business Inventories
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: BUSINV
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 44
+  blocks: global;real
+  category: hard
+  units: $, Millions
+  nyfed_transformation: pch
+  nyfed_category: International Trade
+  nyfed_model: 1
+- name: ULCNFB
+  description: Unit Labor Cost
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: ULCNFB
+  frequency: Q
+  transform: log|diff(1)|scale(400)
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;labor
+  category: hard
+  units: Index
+  nyfed_transformation: pca
+  nyfed_category: Labor
+  nyfed_model: 1
+- name: IQ
+  description: Export Price Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: IQ
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 14
+  blocks: global
+  category: hard
+  units: Index
+  nyfed_transformation: pch
+  nyfed_category: International trade
+  nyfed_model: 1
+- name: GACDISA066MSFRBNY
+  description: Empire State Mfg Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: GACDISA066MSFRBNY
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 0
+  blocks: global;soft
+  category: soft
+  units: Index
+  nyfed_transformation: lin
+  nyfed_category: Surveys
+  nyfed_model: 1
+- name: PCEC96
+  description: Real Consumption Spending
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: PCEC96
+  frequency: M
+  transform: pct_change(1)|scale(100)
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;real
+  category: hard
+  units: Chained $, Billions
+  nyfed_transformation: pch
+  nyfed_category: Retail and Consumption
+  nyfed_model: 1
+- name: A261RX1Q020SBEA
+  description: Real Gross Domestic Income
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: A261RX1Q020SBEA
+  frequency: Q
+  transform: log|diff(1)|scale(400)
+  legacy_code: ''
+  delay_days: 58
+  blocks: global;real
+  category: hard
+  units: Chained $, Billions
+  nyfed_transformation: pca
+  nyfed_category: National Accounts
+  nyfed_model: 0
+- name: GACDFSA066MSFRBPHI
+  description: Philadelphia Fed Mfg Index
+  source: FRBNY Nowcasting repository (data from FRED)
+  source_code: GACDFSA066MSFRBPHI
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 0
+  blocks: global;soft
+  category: soft
+  units: Index
+  nyfed_transformation: lin
+  nyfed_category: Surveys
+  nyfed_model: 1

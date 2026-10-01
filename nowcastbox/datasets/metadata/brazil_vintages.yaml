@@ -1,0 +1,78 @@
+name: brazil_vintages
+title: Real-time vintages of Brazilian quarterly GDP (IBGE)
+description: Seasonally adjusted chained volume indices (1995=100) of GDP, value added by sector and demand
+  components as published in each IBGE quarterly national accounts release since 2010Q1 (one vintage per
+  release), for real-time evaluation and revision analysis.
+loader: load_brazil_vintages
+target: pib
+url: https://ftp.ibge.gov.br/Contas_Nacionais/Contas_Nacionais_Trimestrais/Fasciculo_Indicadores_IBGE/
+sources:
+- IBGE - Contas Nacionais Trimestrais, Indicadores de Volume e Valores Correntes (one publication per
+  quarter), Tabela 6
+license: IBGE public data; free reuse with attribution of the source (IBGE).
+citation: 'IBGE - Instituto Brasileiro de Geografia e Estatística. Contas Nacionais Trimestrais: Indicadores
+  de Volume e Valores Correntes, releases 2010Q1 to 2026Q2. Compiled by nowcastbox.'
+notes: 'Values are the seasonally adjusted index levels; growth rates are computed by the user (e.g. QoQ
+  = pct_change). Because IBGE re-estimates the seasonal adjustment each quarter, the whole history changes
+  from release to release. Release dates: see the ''releases'' file and its ''date_source'' column. Releases
+  2006Q4-2009Q4 (Word documents with embedded tables) are not included.'
+skipped:
+- reference_quarter: 2021Q2
+  reason: last row 2021Q1 != release quarter 2021Q2
+built:
+  date: '2026-10-01'
+  script: scripts/build_datasets/build_brazil_vintages.py
+  n_vintages: 65
+files:
+  data:
+    path: brazil_vintages.csv.gz
+    sha256: 2bff39f2c46e91fa88822f7d9713c62517dd699d449a76fc1a1511900aa22192
+    format: 'csv.gz (long: series, frequency, reference_period, vintage_date, value; a row only when a
+      value is first published or revised)'
+    n_rows: 18703
+  releases:
+    path: brazil_gdp_releases.csv.gz
+    sha256: 9e143e93a67f38f0f94a5461d20bf530026048be6cd972ae5d0de083984eb9db
+    format: csv.gz (reference_quarter, release_date, date_source, table_parsed, file)
+    n_rows: 66
+summary:
+  n_series: 10
+  start: 1996Q1
+  end: 2026Q2
+  frequencies:
+    Q: 10
+  n_vintages: 65
+  first_vintage: '2010-06-04'
+  last_vintage: '2026-09-01'
+series:
+- name: pib_agropecuaria
+  description: 'Gross value added: agriculture - chained quarterly volume index, seasonally adjusted (1995=100)'
+  frequency: Q
+- name: pib_industria
+  description: 'Gross value added: industry - chained quarterly volume index, seasonally adjusted (1995=100)'
+  frequency: Q
+- name: pib_servicos
+  description: 'Gross value added: services - chained quarterly volume index, seasonally adjusted (1995=100)'
+  frequency: Q
+- name: va_pb
+  description: Gross value added at basic prices - chained quarterly volume index, seasonally adjusted
+    (1995=100)
+  frequency: Q
+- name: pib
+  description: GDP at market prices - chained quarterly volume index, seasonally adjusted (1995=100)
+  frequency: Q
+- name: consumo_familias
+  description: Household consumption - chained quarterly volume index, seasonally adjusted (1995=100)
+  frequency: Q
+- name: consumo_governo
+  description: Government consumption - chained quarterly volume index, seasonally adjusted (1995=100)
+  frequency: Q
+- name: fbcf
+  description: Gross fixed capital formation - chained quarterly volume index, seasonally adjusted (1995=100)
+  frequency: Q
+- name: exportacoes_cn
+  description: Exports of goods and services - chained quarterly volume index, seasonally adjusted (1995=100)
+  frequency: Q
+- name: importacoes_cn
+  description: Imports of goods and services - chained quarterly volume index, seasonally adjusted (1995=100)
+  frequency: Q

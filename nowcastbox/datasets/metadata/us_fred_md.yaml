@@ -1,0 +1,1594 @@
+title: FRED-MD monthly US macro database + FRED-QD real GDP
+description: 'FRED-MD (McCracken & Ng, 2016): ~120 monthly US macroeconomic series from 1959 with the
+  official transformation codes, mapped to named nowcastbox transforms (tcode 1 level, 2 diff, 3 diff|diff,
+  4 log, 5 dlog, 6 log|diff|diff, 7 pct_change|diff), plus quarterly real GDP (GDPC1) from FRED-QD stored
+  in the third month of each quarter. Values in levels as in the vintage file.'
+loader: load_us_fred_md
+target: GDPC1
+url: https://www.stlouisfed.org/research/economists/mccracken/fred-databases
+license: FRED-MD/FRED-QD are distributed freely by the Federal Reserve Bank of St. Louis for research.
+  The shipped series come from US government agencies (BEA, BLS, Census, Federal Reserve Board, Treasury;
+  public domain) or are constructed by McCracken & Ng; series under third-party copyright are excluded
+  (see 'excluded_for_license').
+citation: 'McCracken, M. W. & Ng, S. (2016). FRED-MD: A Monthly Database for Macroeconomic Research. Journal
+  of Business & Economic Statistics, 34(4), 574-589. McCracken, M. W. & Ng, S. (2020). FRED-QD: A Quarterly
+  Database for Macroeconomic Research. NBER Working Paper 26872.'
+sources:
+- 'FRED-MD vintage 2026-08 (revised): https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/research/fred-md/monthly/2026-rev-08-md.csv'
+- 'FRED-QD vintage 2026-08 (revised): https://www.stlouisfed.org/-/media/project/frbstl/stlouisfed/research/fred-md/quarterly/2026-rev-08-qd.csv'
+excluded_for_license:
+- series: S&P 500
+  reason: S&P Dow Jones Indices copyright
+- series: S&P div yield
+  reason: S&P Dow Jones Indices copyright
+- series: S&P PE ratio
+  reason: S&P Dow Jones Indices copyright
+- series: AAA
+  reason: Moody's copyright
+- series: BAA
+  reason: Moody's copyright
+- series: AAAFFM
+  reason: Moody's copyright (spread built on AAA)
+- series: BAAFFM
+  reason: Moody's copyright (spread built on BAA)
+- series: UMCSENTx
+  reason: University of Michigan Surveys of Consumers copyright
+- series: VIXCLSx
+  reason: Cboe copyright
+notes: 'Blocks: ''global'' plus the FRED-MD group of the series. Delays are stylised typical US publication
+  lags by group/series (days after the end of the month). The ''fred_md_tcode'' legend column keeps the
+  original code.'
+vintage: 2026-08 (revised)
+name: us_fred_md
+built:
+  date: '2026-10-01'
+  script: scripts/build_datasets/build_us_fred_md.py
+files:
+  data:
+    path: us_fred_md.csv.gz
+    sha256: 4dc86d0cc140ecca9deddfc42554cac22800d2f1cae2a3a43297c7effe94ae22
+    format: csv.gz (wide; period column YYYY-MM; quarterly values in 3rd month)
+    n_rows: 811
+    n_columns: 118
+summary:
+  n_series: 118
+  start: 1959-01
+  end: 2026-07
+  frequencies:
+    M: 117
+    Q: 1
+series:
+- name: RPI
+  description: Real Personal Income
+  source: FRED-MD
+  source_code: RPI
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: W875RX1
+  description: Real personal income ex transfer receipts
+  source: FRED-MD
+  source_code: W875RX1
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: DPCERA3M086SBEA
+  description: Real personal consumption expenditures
+  source: FRED-MD
+  source_code: DPCERA3M086SBEA
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: CMRMTSPLx
+  description: Real Manu.  and Trade Industries Sales
+  source: FRED-MD
+  source_code: CMRMTSPLx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 45
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: RETAILx
+  description: Retail and Food Services Sales
+  source: FRED-MD
+  source_code: RETAILx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: INDPRO
+  description: IP Index
+  source: FRED-MD
+  source_code: INDPRO
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPFPNSS
+  description: 'IP: Final Products and Nonindustrial Supplies'
+  source: FRED-MD
+  source_code: IPFPNSS
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPFINAL
+  description: 'IP: Final Products (Market Group)'
+  source: FRED-MD
+  source_code: IPFINAL
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPCONGD
+  description: 'IP: Consumer Goods'
+  source: FRED-MD
+  source_code: IPCONGD
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPDCONGD
+  description: 'IP: Durable Consumer Goods'
+  source: FRED-MD
+  source_code: IPDCONGD
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPNCONGD
+  description: 'IP: Nondurable Consumer Goods'
+  source: FRED-MD
+  source_code: IPNCONGD
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPBUSEQ
+  description: 'IP: Business Equipment'
+  source: FRED-MD
+  source_code: IPBUSEQ
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPMAT
+  description: 'IP: Materials'
+  source: FRED-MD
+  source_code: IPMAT
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPDMAT
+  description: 'IP: Durable Materials'
+  source: FRED-MD
+  source_code: IPDMAT
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPNMAT
+  description: 'IP: Nondurable Materials'
+  source: FRED-MD
+  source_code: IPNMAT
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPMANSICS
+  description: 'IP: Manufacturing (SIC)'
+  source: FRED-MD
+  source_code: IPMANSICS
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPB51222S
+  description: 'IP: Residential Utilities'
+  source: FRED-MD
+  source_code: IPB51222S
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: IPFUELS
+  description: 'IP: Fuels'
+  source: FRED-MD
+  source_code: IPFUELS
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: output_income
+- name: CUMFNS
+  description: 'Capacity Utilization:  Manufacturing'
+  source: FRED-MD
+  source_code: CUMFNS
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 16
+  blocks: global;output_income
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: output_income
+- name: HWI
+  description: Help-Wanted Index for United States
+  source: FRED-MD
+  source_code: HWI
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 40
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: labor
+- name: HWIURATIO
+  description: Ratio of Help Wanted/No.  Unemployed
+  source: FRED-MD
+  source_code: HWIURATIO
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 40
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: labor
+- name: CLF16OV
+  description: Civilian Labor Force
+  source: FRED-MD
+  source_code: CLF16OV
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: CE16OV
+  description: Civilian Employment
+  source: FRED-MD
+  source_code: CE16OV
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: UNRATE
+  description: Civilian Unemployment Rate
+  source: FRED-MD
+  source_code: UNRATE
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: labor
+- name: UEMPMEAN
+  description: Average Duration of Unemployment (Weeks)
+  source: FRED-MD
+  source_code: UEMPMEAN
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: labor
+- name: UEMPLT5
+  description: Civilians Unemployed - Less Than 5 Weeks
+  source: FRED-MD
+  source_code: UEMPLT5
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: UEMP5TO14
+  description: Civilians Unemployed for 5-14 Weeks
+  source: FRED-MD
+  source_code: UEMP5TO14
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: UEMP15OV
+  description: Civilians Unemployed - 15 Weeks & Over
+  source: FRED-MD
+  source_code: UEMP15OV
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: UEMP15T26
+  description: Civilians Unemployed for 15-26 Weeks
+  source: FRED-MD
+  source_code: UEMP15T26
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: UEMP27OV
+  description: Civilians Unemployed for 27 Weeks and Over
+  source: FRED-MD
+  source_code: UEMP27OV
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: CLAIMSx
+  description: Initial Claims
+  source: FRED-MD
+  source_code: CLAIMSx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 4
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: PAYEMS
+  description: 'All Employees:  Total nonfarm'
+  source: FRED-MD
+  source_code: PAYEMS
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USGOOD
+  description: 'All Employees:  Goods-Producing Industries'
+  source: FRED-MD
+  source_code: USGOOD
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: CES1021000001
+  description: 'All Employees:  Mining and Logging:  Mining'
+  source: FRED-MD
+  source_code: CES1021000001
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USCONS
+  description: 'All Employees:  Construction'
+  source: FRED-MD
+  source_code: USCONS
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: MANEMP
+  description: 'All Employees:  Manufacturing'
+  source: FRED-MD
+  source_code: MANEMP
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: DMANEMP
+  description: 'All Employees:  Durable goods'
+  source: FRED-MD
+  source_code: DMANEMP
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: NDMANEMP
+  description: 'All Employees:  Nondurable goods'
+  source: FRED-MD
+  source_code: NDMANEMP
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: SRVPRD
+  description: 'All Employees:  Service-Providing Industries'
+  source: FRED-MD
+  source_code: SRVPRD
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USTPU
+  description: 'All Employees:  Trade, Transportation & Utilities'
+  source: FRED-MD
+  source_code: USTPU
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USWTRADE
+  description: 'All Employees:  Wholesale Trade'
+  source: FRED-MD
+  source_code: USWTRADE
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USTRADE
+  description: 'All Employees:  Retail Trade'
+  source: FRED-MD
+  source_code: USTRADE
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USFIRE
+  description: 'All Employees:  Financial Activities'
+  source: FRED-MD
+  source_code: USFIRE
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: USGOVT
+  description: 'All Employees:  Government'
+  source: FRED-MD
+  source_code: USGOVT
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: labor
+- name: CES0600000007
+  description: 'Avg Weekly Hours :  Goods-Producing'
+  source: FRED-MD
+  source_code: CES0600000007
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: labor
+- name: AWOTMAN
+  description: 'Avg Weekly Overtime Hours :  Manufacturing'
+  source: FRED-MD
+  source_code: AWOTMAN
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: labor
+- name: AWHMAN
+  description: 'Avg Weekly Hours :  Manufacturing'
+  source: FRED-MD
+  source_code: AWHMAN
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: labor
+- name: HOUST
+  description: 'Housing Starts:  Total New Privately Owned'
+  source: FRED-MD
+  source_code: HOUST
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: HOUSTNE
+  description: Housing Starts, Northeast
+  source: FRED-MD
+  source_code: HOUSTNE
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: HOUSTMW
+  description: Housing Starts, Midwest
+  source: FRED-MD
+  source_code: HOUSTMW
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: HOUSTS
+  description: Housing Starts, South
+  source: FRED-MD
+  source_code: HOUSTS
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: HOUSTW
+  description: Housing Starts, West
+  source: FRED-MD
+  source_code: HOUSTW
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: PERMIT
+  description: New Private Housing Permits (SAAR)
+  source: FRED-MD
+  source_code: PERMIT
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: PERMITNE
+  description: New Private Housing Permits, Northeast (SAAR)
+  source: FRED-MD
+  source_code: PERMITNE
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: PERMITMW
+  description: New Private Housing Permits, Midwest (SAAR)
+  source: FRED-MD
+  source_code: PERMITMW
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: PERMITS
+  description: New Private Housing Permits, South (SAAR)
+  source: FRED-MD
+  source_code: PERMITS
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: PERMITW
+  description: New Private Housing Permits, West (SAAR)
+  source: FRED-MD
+  source_code: PERMITW
+  frequency: M
+  transform: log
+  legacy_code: ''
+  delay_days: 18
+  blocks: global;housing
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 4
+  fred_md_group: housing
+- name: ACOGNO
+  description: New Orders for Consumer Goods
+  source: FRED-MD
+  source_code: ACOGNO
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: AMDMNOx
+  description: New Orders for Durable Goods
+  source: FRED-MD
+  source_code: AMDMNOx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: ANDENOx
+  description: New Orders for Nondefense Capital Goods
+  source: FRED-MD
+  source_code: ANDENOx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: AMDMUOx
+  description: Unfilled Orders for Durable Goods
+  source: FRED-MD
+  source_code: AMDMUOx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 35
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: BUSINVx
+  description: Total Business Inventories
+  source: FRED-MD
+  source_code: BUSINVx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 45
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: consumption_orders
+- name: ISRATIOx
+  description: 'Total Business:  Inventories to Sales Ratio'
+  source: FRED-MD
+  source_code: ISRATIOx
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 45
+  blocks: global;consumption_orders
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: consumption_orders
+- name: M1SL
+  description: M1 Money Stock
+  source: FRED-MD
+  source_code: M1SL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: M2SL
+  description: M2 Money Stock
+  source: FRED-MD
+  source_code: M2SL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: M2REAL
+  description: Real M2 Money Stock
+  source: FRED-MD
+  source_code: M2REAL
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: money_credit
+- name: BOGMBASE
+  description: Monetary Base
+  source: FRED-MD
+  source_code: BOGMBASE
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: TOTRESNS
+  description: Total Reserves of Depository Institutions
+  source: FRED-MD
+  source_code: TOTRESNS
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: NONBORRES
+  description: Reserves Of Depository Institutions
+  source: FRED-MD
+  source_code: NONBORRES
+  frequency: M
+  transform: pct_change|diff
+  legacy_code: ''
+  delay_days: 25
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 7
+  fred_md_group: money_credit
+- name: BUSLOANS
+  description: Commercial and Industrial Loans
+  source: FRED-MD
+  source_code: BUSLOANS
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: REALLN
+  description: Real Estate Loans at All Commercial Banks
+  source: FRED-MD
+  source_code: REALLN
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: NONREVSL
+  description: Total Nonrevolving Credit
+  source: FRED-MD
+  source_code: NONREVSL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 38
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: CONSPI
+  description: Nonrevolving consumer credit to Personal Income
+  source: FRED-MD
+  source_code: CONSPI
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 38
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: money_credit
+- name: FEDFUNDS
+  description: Effective Federal Funds Rate
+  source: FRED-MD
+  source_code: FEDFUNDS
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: CP3Mx
+  description: 3-Month AA Financial Commercial Paper Rate
+  source: FRED-MD
+  source_code: CP3Mx
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: TB3MS
+  description: '3-Month Treasury Bill:'
+  source: FRED-MD
+  source_code: TB3MS
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: TB6MS
+  description: '6-Month Treasury Bill:'
+  source: FRED-MD
+  source_code: TB6MS
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: GS1
+  description: 1-Year Treasury Rate
+  source: FRED-MD
+  source_code: GS1
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: GS5
+  description: 5-Year Treasury Rate
+  source: FRED-MD
+  source_code: GS5
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: GS10
+  description: 10-Year Treasury Rate
+  source: FRED-MD
+  source_code: GS10
+  frequency: M
+  transform: diff
+  legacy_code: '2'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 2
+  fred_md_group: rates_fx
+- name: COMPAPFFx
+  description: 3-Month Commercial Paper Minus FEDFUNDS
+  source: FRED-MD
+  source_code: COMPAPFFx
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: rates_fx
+- name: TB3SMFFM
+  description: 3-Month Treasury C Minus FEDFUNDS
+  source: FRED-MD
+  source_code: TB3SMFFM
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: rates_fx
+- name: TB6SMFFM
+  description: 6-Month Treasury C Minus FEDFUNDS
+  source: FRED-MD
+  source_code: TB6SMFFM
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: rates_fx
+- name: T1YFFM
+  description: 1-Year Treasury C Minus FEDFUNDS
+  source: FRED-MD
+  source_code: T1YFFM
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: rates_fx
+- name: T5YFFM
+  description: 5-Year Treasury C Minus FEDFUNDS
+  source: FRED-MD
+  source_code: T5YFFM
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: rates_fx
+- name: T10YFFM
+  description: 10-Year Treasury C Minus FEDFUNDS
+  source: FRED-MD
+  source_code: T10YFFM
+  frequency: M
+  transform: level
+  legacy_code: '0'
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 1
+  fred_md_group: rates_fx
+- name: TWEXAFEGSMTHx
+  description: Trade Weighted U.S. Dollar Index
+  source: FRED-MD
+  source_code: TWEXAFEGSMTHx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: rates_fx
+- name: EXSZUSx
+  description: Switzerland / U.S. Foreign Exchange Rate
+  source: FRED-MD
+  source_code: EXSZUSx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: rates_fx
+- name: EXJPUSx
+  description: Japan / U.S. Foreign Exchange Rate
+  source: FRED-MD
+  source_code: EXJPUSx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: rates_fx
+- name: EXUSUKx
+  description: U.S. / U.K. Foreign Exchange Rate
+  source: FRED-MD
+  source_code: EXUSUKx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: rates_fx
+- name: EXCAUSx
+  description: Canada / U.S. Foreign Exchange Rate
+  source: FRED-MD
+  source_code: EXCAUSx
+  frequency: M
+  transform: dlog
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;rates_fx
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 5
+  fred_md_group: rates_fx
+- name: WPSFD49207
+  description: 'PPI: Finished Goods'
+  source: FRED-MD
+  source_code: WPSFD49207
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: WPSFD49502
+  description: 'PPI: Finished Consumer Goods'
+  source: FRED-MD
+  source_code: WPSFD49502
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: WPSID61
+  description: 'PPI: Intermediate Materials'
+  source: FRED-MD
+  source_code: WPSID61
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: WPSID62
+  description: 'PPI: Crude Materials'
+  source: FRED-MD
+  source_code: WPSID62
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: OILPRICEx
+  description: Crude Oil, spliced WTI and Cushing
+  source: FRED-MD
+  source_code: OILPRICEx
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 1
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: PPICMM
+  description: 'PPI: Metals and metal products:'
+  source: FRED-MD
+  source_code: PPICMM
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CPIAUCSL
+  description: 'CPI : All Items'
+  source: FRED-MD
+  source_code: CPIAUCSL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CPIAPPSL
+  description: 'CPI : Apparel'
+  source: FRED-MD
+  source_code: CPIAPPSL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CPITRNSL
+  description: 'CPI : Transportation'
+  source: FRED-MD
+  source_code: CPITRNSL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CPIMEDSL
+  description: 'CPI : Medical Care'
+  source: FRED-MD
+  source_code: CPIMEDSL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CUSR0000SAC
+  description: 'CPI : Commodities'
+  source: FRED-MD
+  source_code: CUSR0000SAC
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CUSR0000SAD
+  description: 'CPI : Durables'
+  source: FRED-MD
+  source_code: CUSR0000SAD
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CUSR0000SAS
+  description: 'CPI : Services'
+  source: FRED-MD
+  source_code: CUSR0000SAS
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CPIULFSL
+  description: 'CPI : All Items Less Food'
+  source: FRED-MD
+  source_code: CPIULFSL
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CUSR0000SA0L2
+  description: 'CPI : All items less shelter'
+  source: FRED-MD
+  source_code: CUSR0000SA0L2
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CUSR0000SA0L5
+  description: 'CPI : All items less medical care'
+  source: FRED-MD
+  source_code: CUSR0000SA0L5
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 14
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: PCEPI
+  description: 'Personal Cons.  Expend.:  Chain Index'
+  source: FRED-MD
+  source_code: PCEPI
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: DDURRG3M086SBEA
+  description: 'Personal Cons.  Exp:  Durable goods'
+  source: FRED-MD
+  source_code: DDURRG3M086SBEA
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: DNDGRG3M086SBEA
+  description: 'Personal Cons.  Exp:  Nondurable goods'
+  source: FRED-MD
+  source_code: DNDGRG3M086SBEA
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: DSERRG3M086SBEA
+  description: 'Personal Cons.  Exp:  Services'
+  source: FRED-MD
+  source_code: DSERRG3M086SBEA
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 29
+  blocks: global;prices
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: prices
+- name: CES0600000008
+  description: 'Avg Hourly Earnings :  Goods-Producing'
+  source: FRED-MD
+  source_code: CES0600000008
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: labor
+- name: CES2000000008
+  description: 'Avg Hourly Earnings :  Construction'
+  source: FRED-MD
+  source_code: CES2000000008
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: labor
+- name: CES3000000008
+  description: 'Avg Hourly Earnings :  Manufacturing'
+  source: FRED-MD
+  source_code: CES3000000008
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 5
+  blocks: global;labor
+  category: hard
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: labor
+- name: DTCOLNVHFNM
+  description: Consumer Motor Vehicle Loans Outstanding
+  source: FRED-MD
+  source_code: DTCOLNVHFNM
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: DTCTHFNM
+  description: Total Consumer Loans and Leases Outstanding
+  source: FRED-MD
+  source_code: DTCTHFNM
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: INVEST
+  description: Securities in Bank Credit at All Commercial Banks
+  source: FRED-MD
+  source_code: INVEST
+  frequency: M
+  transform: log|diff|diff
+  legacy_code: ''
+  delay_days: 10
+  blocks: global;money_credit
+  category: financial
+  units: see FRED series notes
+  fred_md_tcode: 6
+  fred_md_group: money_credit
+- name: GDPC1
+  description: Real Gross Domestic Product (chained dollars)
+  source: FRED-QD
+  source_code: GDPC1
+  frequency: Q
+  transform: dlog
+  legacy_code: ''
+  delay_days: 28
+  blocks: global;output_income
+  category: hard
+  units: billions of chained dollars, SAAR
+  fred_md_tcode: 5
+  fred_md_group: output_income

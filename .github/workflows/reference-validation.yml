@@ -1,0 +1,38 @@
+name: Reference validation
+
+# Regenerates fixtures with the reference implementations (R `nowcasting`, statsmodels)
+# run as black boxes, then compares them with nowcastbox
+# (plan §10.4). No reference source code is ever copied into the package.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"  # weekly, Monday 05:00 UTC
+  workflow_dispatch:
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: r-lib/actions/setup-r@v2
+      - name: Install R reference package (called as a black box only)
+        run: Rscript -e 'install.packages(c("remotes", "jsonlite")); remotes::install_github("nmecsys/nowcasting")'
+      - name: Install nowcastbox
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+      - name: Generate fixtures (order of docs/validation/reproducing.md)
+        env:
+          OMP_NUM_THREADS: "1"
+        run: |
+          Rscript scripts/reference_fixtures/export_inputs.R
+          python scripts/reference_fixtures/make_simulated.py
+          for s in r_preprocessing r_selection r_two_step r_em r_prtdb; do
+            Rscript scripts/reference_fixtures/$s.R
+          done
+          python scripts/reference_fixtures/statsmodels_dfmq.py
+      - name: Compare
+        run: pytest tests/reference_validation -m "reference_validation or reference_divergence" -v
