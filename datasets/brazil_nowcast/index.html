@@ -1,0 +1,5878 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Nowcasting with dynamic factor models in Python">
+      
+      
+        <meta name="author" content="Gustavo Haase and Alexandre Leão Sanches">
+      
+      
+        <link rel="canonical" href="https://nowcastbox.github.io/nowcastbox/datasets/brazil_nowcast/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../brazil_calendar/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Brazilian nowcasting panel - NowcastBox</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#load_brazil_nowcast-brazilian-nowcasting-panel-bcb-ibge-ipea" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="NowcastBox" class="md-header__button md-logo" aria-label="NowcastBox" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            NowcastBox
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Brazilian nowcasting panel
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NowcastBox/nowcastbox" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NowcastBox/nowcastbox
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../theory/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Theory
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Datasets
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../validation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Validation
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../comparison/r-nowcasting/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Comparison
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="NowcastBox" class="md-nav__button md-logo" aria-label="NowcastBox" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    NowcastBox
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NowcastBox/nowcastbox" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NowcastBox/nowcastbox
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/core-concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/choosing-a-method/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a method
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../user-guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data/mixed-frequency-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mixed-frequency data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data/transformations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transformations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data/outliers-missing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outliers and missing data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data/aggregation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aggregation and frequencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vintages
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Vintages
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/vintages/pseudo-real-time/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pseudo real-time data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/vintages/release-calendar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release calendar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/vintages/real-vintages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Real-time vintages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Models
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/two-step-dfm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Two-step DFM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/em-dfm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EM mixed-frequency DFM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/blocks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blocks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/robust/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Robust estimation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/long-run-mean/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-varying long-run mean
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/bridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bridge equations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/models/benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Selection
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Selection
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/selection/number-of-factors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Number of factors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/selection/number-of-shocks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Number of shocks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/selection/targeted-predictors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Targeted predictors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    News and explainability
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    News and explainability
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/news/news-decomposition/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    News decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/news/tracker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nowcast tracker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/news/level-contributions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Level contributions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Density nowcasts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Density nowcasts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/density/density-nowcasts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predictive distributions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/density/scoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scoring densities
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Evaluation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/evaluation/backtesting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backtesting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/evaluation/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Accuracy metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/evaluation/forecast-comparison-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast comparison tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/evaluation/experiments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_10" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../user-guide/data-sources/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_10" id="__nav_3_10_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data sources
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data-sources/bcb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BCB (SGS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data-sources/ibge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IBGE (SIDRA)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data-sources/ipea/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IPEADATA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/data-sources/fred/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FRED / ALFRED
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_11" id="__nav_3_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization and reports
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Visualization and reports
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/visualization/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/visualization/reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTML reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/pipeline-cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline and CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../theory/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Theory
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Theory
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/dfm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic factor models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/kalman-filter-smoother/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kalman filter and smoother
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/em-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EM algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/mariano-murasawa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Temporal aggregation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/bai-ng/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bai-Ng criteria
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/news/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    News decomposition
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/density-scoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Density nowcasts and scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/forecast-evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../theory/references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasets
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Datasets
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brazilian nowcasting panel
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brazilian nowcasting panel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variable-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable dictionary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources-and-license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources and license
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#citation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Citation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-and-integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files and integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../brazil_calendar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brazilian release calendar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../brazil_vintages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brazilian GDP vintages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nyfed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NY Fed panel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../us_fred_md/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FRED-MD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../us_grs_like/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GRS (2008)-like panel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../simulated_dfm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulated DFM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../validation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Validation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/preprocessing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pre-processing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/two_step/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Two-step DFM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/em/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels DynamicFactorMQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/vintages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vintages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/reproducing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reproducing the fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Comparison
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../comparison/r-nowcasting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R package nowcasting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../comparison/statsmodels-dynamicfactormq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels DynamicFactorMQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/toplevel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Top level (nb.nowcast)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/preprocessing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/statespace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/vintages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vintages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/news/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    News decomposition (I6)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/density/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Density nowcasts (I5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation and scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostics (I9)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/data_sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datasets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/experiment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Experiment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline, CLI and simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variable-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable dictionary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sources-and-license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources and license
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#citation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Citation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-and-integrity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files and integrity
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="load_brazil_nowcast-brazilian-nowcasting-panel-bcb-ibge-ipea"><code>load_brazil_nowcast()</code> — Brazilian nowcasting panel (BCB, IBGE, IPEA)<a class="headerlink" href="#load_brazil_nowcast-brazilian-nowcasting-panel-bcb-ibge-ipea" title="Permanent link">&para;</a></h1>
+<p>Monthly and quarterly Brazilian indicators from 2003 to the latest release for nowcasting quarterly GDP: national accounts (target: seasonally adjusted GDP volume index, QoQ growth), IBC-Br, industrial production, retail and services surveys, labour market, external trade, prices, money, credit, fiscal, financial variables and Focus survey expectations. Values are in levels as published; the legend gives the named stationarity transformation.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Loader</td>
+<td><code>nowcastbox.datasets.load_brazil_nowcast</code></td>
+</tr>
+<tr>
+<td>Default target</td>
+<td><code>pib</code></td>
+</tr>
+<tr>
+<td>N series</td>
+<td>99</td>
+</tr>
+<tr>
+<td>Start</td>
+<td>2003-01</td>
+</tr>
+<tr>
+<td>End</td>
+<td>2026-09</td>
+</tr>
+<tr>
+<td>Frequencies</td>
+<td>Q: 10, M: 89</td>
+</tr>
+<tr>
+<td>Built</td>
+<td>2026-10-01 (<code>scripts/build_datasets/build_brazil_nowcast.py</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">nowcastbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nb</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">nowcastbox.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_brazil_nowcast</span><span class="p">,</span> <span class="n">load_brazil_calendar</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">load_brazil_nowcast</span><span class="p">()</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">panel</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">prepare_panel</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>            <span class="c1"># applies the legend transforms</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">res</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">MixedFreqDFM</span><span class="p">(</span><span class="n">n_factors</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">blocks</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">blocks</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="s2">"pib"</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># pseudo real-time vintage with the actual GDP release dates</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">vintage</span> <span class="o">=</span> <span class="n">nb</span><span class="o">.</span><span class="n">pseudo_real_time</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">calendar</span><span class="o">=</span><span class="n">load_brazil_calendar</span><span class="p">(),</span> <span class="n">vintage</span><span class="o">=</span><span class="s2">"2024-05-15"</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Blocks:</strong> <code>global</code> (99), <code>real</code> (57), <code>nominal</code> (21), <code>financial</code> (19), <code>soft</code> (2)</p>
+<p><strong>Categories:</strong> <code>hard</code> (73), <code>financial</code> (24), <code>soft</code> (2)</p>
+<h2 id="variable-dictionary">Variable dictionary<a class="headerlink" href="#variable-dictionary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>name</th>
+<th>description</th>
+<th>source</th>
+<th>source_code</th>
+<th>frequency</th>
+<th>transform</th>
+<th>delay_days</th>
+<th>blocks</th>
+<th>category</th>
+<th>units</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pib</td>
+<td>GDP at market prices - chained quarterly volume index, seasonally adjusted (nowcasting target; transform gives QoQ SA growth)</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=90707</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pib_agropecuaria</td>
+<td>Gross value added: agriculture - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=90687</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pib_industria</td>
+<td>Gross value added: industry - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=90691</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pib_servicos</td>
+<td>Gross value added: services - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=90696</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>consumo_familias</td>
+<td>Household consumption - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=93404</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>consumo_governo</td>
+<td>Government consumption - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=93405</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>fbcf</td>
+<td>Gross fixed capital formation - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=93406</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>exportacoes_cn</td>
+<td>Exports of goods and services - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=93407</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>importacoes_cn</td>
+<td>Imports of goods and services - chained quarterly volume index, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1621/v584/c11255=93408</td>
+<td>Q</td>
+<td>qoq</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pib_nsa</td>
+<td>GDP at market prices - chained quarterly volume index, not seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t1620/v583/c11255=90707</td>
+<td>Q</td>
+<td>yoy</td>
+<td>62</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100)</td>
+</tr>
+<tr>
+<td>ibc_br</td>
+<td>IBC-Br, Central Bank economic activity index, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>24364</td>
+<td>M</td>
+<td>dlog</td>
+<td>46</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2002=100), SA</td>
+</tr>
+<tr>
+<td>ibc_br_agropecuaria</td>
+<td>IBC-Br agriculture component, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>29602</td>
+<td>M</td>
+<td>dlog</td>
+<td>46</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index, SA</td>
+</tr>
+<tr>
+<td>ibc_br_industria</td>
+<td>IBC-Br industry component, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>29604</td>
+<td>M</td>
+<td>dlog</td>
+<td>46</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index, SA</td>
+</tr>
+<tr>
+<td>ibc_br_servicos</td>
+<td>IBC-Br services component, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>29606</td>
+<td>M</td>
+<td>dlog</td>
+<td>46</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index, SA</td>
+</tr>
+<tr>
+<td>pim_geral</td>
+<td>Industrial production (PIM-PF) - general industry, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129314</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_extrativa</td>
+<td>Industrial production (PIM-PF) - extractive industries, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129315</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_transformacao</td>
+<td>Industrial production (PIM-PF) - manufacturing, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129316</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_alimentos</td>
+<td>Industrial production (PIM-PF) - food products, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129317</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_derivados_petroleo</td>
+<td>Industrial production (PIM-PF) - coke and petroleum products, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129326</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_quimicos</td>
+<td>Industrial production (PIM-PF) - chemicals, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=56689</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_metalurgia</td>
+<td>Industrial production (PIM-PF) - basic metals, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129333</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_maquinas</td>
+<td>Industrial production (PIM-PF) - machinery and equipment, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129337</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_veiculos</td>
+<td>Industrial production (PIM-PF) - motor vehicles, trailers and bodies, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8888/v12607/c544=129338</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_bens_capital</td>
+<td>Industrial production (PIM-PF) - capital goods, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8887/v12607/c543=129278</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_bens_intermediarios</td>
+<td>Industrial production (PIM-PF) - intermediate goods, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8887/v12607/c543=129283</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_bens_consumo_duraveis</td>
+<td>Industrial production (PIM-PF) - durable consumer goods, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8887/v12607/c543=129301</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pim_bens_consumo_semi_nao_duraveis</td>
+<td>Industrial production (PIM-PF) - semi-durable and non-durable consumer goods, seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8887/v12607/c543=129305</td>
+<td>M</td>
+<td>dlog</td>
+<td>35</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), seasonally adjusted</td>
+</tr>
+<tr>
+<td>pmc_varejo</td>
+<td>Retail trade sales volume (PMC), seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8880/v7170/c11046=56734</td>
+<td>M</td>
+<td>dlog</td>
+<td>42</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), SA</td>
+</tr>
+<tr>
+<td>pmc_ampliado</td>
+<td>Extended retail trade sales volume (PMC, incl. vehicles and construction materials), seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t8881/v7170/c11046=56736</td>
+<td>M</td>
+<td>dlog</td>
+<td>42</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), SA</td>
+</tr>
+<tr>
+<td>pmc_supermercados</td>
+<td>Retail sales volume: hyper/supermarkets, food, beverages and tobacco, SA</td>
+<td>IBGE/SIDRA</td>
+<td>t8882/v7170/c11046=56734/c85=90672</td>
+<td>M</td>
+<td>dlog</td>
+<td>42</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), SA</td>
+</tr>
+<tr>
+<td>pmc_moveis_eletro</td>
+<td>Retail sales volume: furniture and household appliances, SA</td>
+<td>IBGE/SIDRA</td>
+<td>t8882/v7170/c11046=56734/c85=2759</td>
+<td>M</td>
+<td>dlog</td>
+<td>42</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), SA</td>
+</tr>
+<tr>
+<td>pmc_combustiveis</td>
+<td>Retail sales volume: fuels and lubricants, SA</td>
+<td>IBGE/SIDRA</td>
+<td>t8882/v7170/c11046=56734/c85=90671</td>
+<td>M</td>
+<td>dlog</td>
+<td>42</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), SA</td>
+</tr>
+<tr>
+<td>pms_volume</td>
+<td>Services volume (PMS), seasonally adjusted</td>
+<td>IBGE/SIDRA</td>
+<td>t5906/v7168/c11046=56726</td>
+<td>M</td>
+<td>dlog</td>
+<td>43</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2022=100), SA</td>
+</tr>
+<tr>
+<td>ipea_fbcf</td>
+<td>IPEA monthly indicator of gross fixed capital formation, SA</td>
+<td>IPEADATA</td>
+<td>GAC12_INDFBCFDESSAZ12</td>
+<td>M</td>
+<td>dlog</td>
+<td>95</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), SA</td>
+</tr>
+<tr>
+<td>ipea_fbcf_construcao</td>
+<td>IPEA monthly GFCF indicator: construction, SA</td>
+<td>IPEADATA</td>
+<td>GAC12_INDFBCFCCDESSAZ12</td>
+<td>M</td>
+<td>dlog</td>
+<td>95</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (1995=100), SA</td>
+</tr>
+<tr>
+<td>ipea_consumo_aparente_bk</td>
+<td>IPEA apparent consumption of capital goods (machinery), SA</td>
+<td>IPEADATA</td>
+<td>GAC12_FBKFCAMIDESSAZ12</td>
+<td>M</td>
+<td>dlog</td>
+<td>63</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2012=100), SA</td>
+</tr>
+<tr>
+<td>ipea_consumo_aparente_industria</td>
+<td>IPEA apparent consumption of industrial goods, SA</td>
+<td>IPEADATA</td>
+<td>GAC12_CAIGDESSAZ12</td>
+<td>M</td>
+<td>dlog</td>
+<td>63</td>
+<td>global;real</td>
+<td>hard</td>
+<td>index (2012=100), SA</td>
+</tr>
+<tr>
+<td>energia_consumo_total</td>
+<td>Electricity consumption, total (EPE/Eletrobras, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>ELETRO12_CEET12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>GWh</td>
+</tr>
+<tr>
+<td>energia_consumo_industria</td>
+<td>Electricity consumption, industry (EPE/Eletrobras, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>ELETRO12_CEEIND12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>GWh</td>
+</tr>
+<tr>
+<td>energia_consumo_comercio</td>
+<td>Electricity consumption, commerce (EPE/Eletrobras, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>ELETRO12_CEECOM12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>GWh</td>
+</tr>
+<tr>
+<td>energia_consumo_residencial</td>
+<td>Electricity consumption, residential (EPE/Eletrobras, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>ELETRO12_CEERES12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>GWh</td>
+</tr>
+<tr>
+<td>anp_diesel</td>
+<td>Diesel oil consumption, daily average (ANP, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>ANP12_COLDIE12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>barrels/day</td>
+</tr>
+<tr>
+<td>anp_petroleo_producao</td>
+<td>Oil production, daily average (ANP, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>ANP12_PDPET12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>barrels/day</td>
+</tr>
+<tr>
+<td>arrecadacao_federal</td>
+<td>Federal tax revenue, gross (Receita Federal, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>SRF12_TOTGER12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;real</td>
+<td>hard</td>
+<td>R$ (current)</td>
+</tr>
+<tr>
+<td>desocupacao</td>
+<td>Unemployment rate, PNAD Continua (rolling quarter ending in the month)</td>
+<td>IBGE/SIDRA</td>
+<td>t6381/v4099</td>
+<td>M</td>
+<td>diff</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>%</td>
+</tr>
+<tr>
+<td>desocupacao_sa</td>
+<td>Unemployment rate, PNAD Continua, monthly and seasonally adjusted (IPEA)</td>
+<td>IPEADATA</td>
+<td>PNADC12_TDESOCMD12</td>
+<td>M</td>
+<td>diff</td>
+<td>33</td>
+<td>global;real</td>
+<td>hard</td>
+<td>%</td>
+</tr>
+<tr>
+<td>ocupacao_sa</td>
+<td>Employment-to-population ratio, PNAD Continua, monthly and seasonally adjusted (IPEA)</td>
+<td>IPEADATA</td>
+<td>PNADC12_NOCUPMD12</td>
+<td>M</td>
+<td>diff</td>
+<td>33</td>
+<td>global;real</td>
+<td>hard</td>
+<td>%</td>
+</tr>
+<tr>
+<td>massa_salarial_sa</td>
+<td>Real usual earnings mass, PNAD Continua, monthly and seasonally adjusted (IPEA)</td>
+<td>IPEADATA</td>
+<td>PNADC12_MRTHMD12</td>
+<td>M</td>
+<td>dlog</td>
+<td>33</td>
+<td>global;real</td>
+<td>hard</td>
+<td>R$</td>
+</tr>
+<tr>
+<td>caged_saldo</td>
+<td>Formal job creation, net (Novo Caged, with late declarations; Ministry of Labour)</td>
+<td>IPEADATA</td>
+<td>CAGED12_SALDONAJU12</td>
+<td>M</td>
+<td>level</td>
+<td>30</td>
+<td>global;real</td>
+<td>hard</td>
+<td>persons</td>
+</tr>
+<tr>
+<td>exportacoes_bp</td>
+<td>Exports of goods, balance of payments (BPM6)</td>
+<td>BCB/SGS</td>
+<td>22708</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ million</td>
+</tr>
+<tr>
+<td>importacoes_bp</td>
+<td>Imports of goods, balance of payments (BPM6)</td>
+<td>BCB/SGS</td>
+<td>22709</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ million</td>
+</tr>
+<tr>
+<td>balanca_comercial</td>
+<td>Trade balance (goods), balance of payments (BPM6)</td>
+<td>BCB/SGS</td>
+<td>22707</td>
+<td>M</td>
+<td>annual_diff</td>
+<td>25</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ million</td>
+</tr>
+<tr>
+<td>transacoes_correntes</td>
+<td>Current account balance (BPM6)</td>
+<td>BCB/SGS</td>
+<td>22701</td>
+<td>M</td>
+<td>annual_diff</td>
+<td>25</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ million</td>
+</tr>
+<tr>
+<td>secex_exportacoes</td>
+<td>Exports, FOB (SECEX/MDIC, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>SECEX12_XVTOT12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>5</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ (FOB)</td>
+</tr>
+<tr>
+<td>secex_importacoes</td>
+<td>Imports, FOB (SECEX/MDIC, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>SECEX12_MVTOT12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>5</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ (FOB)</td>
+</tr>
+<tr>
+<td>secex_importacoes_bk</td>
+<td>Imports of capital goods, FOB (SECEX/MDIC, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>SECEX12_MBENCAPGCE12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>5</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ (FOB)</td>
+</tr>
+<tr>
+<td>secex_importacoes_intermediarios</td>
+<td>Imports of intermediate goods, FOB (SECEX/MDIC, via IPEADATA)</td>
+<td>IPEADATA</td>
+<td>SECEX12_MINTGCE12</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>5</td>
+<td>global;real</td>
+<td>hard</td>
+<td>US$ (FOB)</td>
+</tr>
+<tr>
+<td>ipca</td>
+<td>IPCA consumer price index</td>
+<td>IBGE/SIDRA</td>
+<td>t1737/v2266</td>
+<td>M</td>
+<td>dlog</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>index (Dec 1993=100)</td>
+</tr>
+<tr>
+<td>inpc</td>
+<td>INPC consumer price index</td>
+<td>IBGE/SIDRA</td>
+<td>t1736/v2289</td>
+<td>M</td>
+<td>dlog</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>index (Dec 1993=100)</td>
+</tr>
+<tr>
+<td>ipca15</td>
+<td>IPCA-15 consumer price index (released within the reference month)</td>
+<td>IBGE/SIDRA</td>
+<td>t3065/v1117</td>
+<td>M</td>
+<td>dlog</td>
+<td>0</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>index (Dec 1993=100)</td>
+</tr>
+<tr>
+<td>ipp_industria</td>
+<td>Producer price index (IPP), general industry</td>
+<td>IBGE/SIDRA</td>
+<td>t6903/v10008/c842=46608</td>
+<td>M</td>
+<td>dlog</td>
+<td>30</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>index (Dec 2018=100)</td>
+</tr>
+<tr>
+<td>ipca_livres</td>
+<td>IPCA market (free) prices, monthly change</td>
+<td>BCB/SGS</td>
+<td>11428</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_monitorados</td>
+<td>IPCA administered prices, monthly change</td>
+<td>BCB/SGS</td>
+<td>4449</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_servicos</td>
+<td>IPCA services, monthly change</td>
+<td>BCB/SGS</td>
+<td>10844</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_comercializaveis</td>
+<td>IPCA tradables, monthly change</td>
+<td>BCB/SGS</td>
+<td>4447</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_nao_comercializaveis</td>
+<td>IPCA non-tradables, monthly change</td>
+<td>BCB/SGS</td>
+<td>4448</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_duraveis</td>
+<td>IPCA durable goods, monthly change</td>
+<td>BCB/SGS</td>
+<td>10843</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_nucleo_ma</td>
+<td>IPCA core: smoothed trimmed means, monthly change</td>
+<td>BCB/SGS</td>
+<td>4466</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_nucleo_ex</td>
+<td>IPCA core: exclusion (ex administered and food at home), monthly change</td>
+<td>BCB/SGS</td>
+<td>11427</td>
+<td>M</td>
+<td>level</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% m/m</td>
+</tr>
+<tr>
+<td>ipca_difusao</td>
+<td>IPCA diffusion index</td>
+<td>BCB/SGS</td>
+<td>21379</td>
+<td>M</td>
+<td>diff</td>
+<td>10</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>%</td>
+</tr>
+<tr>
+<td>base_monetaria</td>
+<td>Monetary base (end of period)</td>
+<td>BCB/SGS</td>
+<td>1788</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;nominal</td>
+<td>financial</td>
+<td>R$ thousand</td>
+</tr>
+<tr>
+<td>m1</td>
+<td>M1 money supply (end of period, new methodology)</td>
+<td>BCB/SGS</td>
+<td>27791</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;nominal</td>
+<td>financial</td>
+<td>R$ thousand</td>
+</tr>
+<tr>
+<td>m2</td>
+<td>M2 money supply (end of period, new methodology)</td>
+<td>BCB/SGS</td>
+<td>27810</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;nominal</td>
+<td>financial</td>
+<td>R$ thousand</td>
+</tr>
+<tr>
+<td>m3</td>
+<td>M3 money supply (end of period, new methodology)</td>
+<td>BCB/SGS</td>
+<td>27813</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;nominal</td>
+<td>financial</td>
+<td>R$ thousand</td>
+</tr>
+<tr>
+<td>m4</td>
+<td>M4 money supply (end of period, new methodology)</td>
+<td>BCB/SGS</td>
+<td>27815</td>
+<td>M</td>
+<td>dlog_yoy</td>
+<td>25</td>
+<td>global;nominal</td>
+<td>financial</td>
+<td>R$ thousand</td>
+</tr>
+<tr>
+<td>dlsp_pib</td>
+<td>Net public sector debt, consolidated public sector</td>
+<td>BCB/SGS</td>
+<td>4513</td>
+<td>M</td>
+<td>diff</td>
+<td>30</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% of GDP</td>
+</tr>
+<tr>
+<td>dbgg_pib</td>
+<td>Gross general government debt (2008 methodology)</td>
+<td>BCB/SGS</td>
+<td>13762</td>
+<td>M</td>
+<td>diff</td>
+<td>30</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% of GDP</td>
+</tr>
+<tr>
+<td>resultado_primario_12m</td>
+<td>Public sector borrowing requirement, primary result, 12-month sum, consolidated public sector (positive = deficit)</td>
+<td>BCB/SGS</td>
+<td>5793</td>
+<td>M</td>
+<td>diff</td>
+<td>30</td>
+<td>global;nominal</td>
+<td>hard</td>
+<td>% of GDP</td>
+</tr>
+<tr>
+<td>selic</td>
+<td>Selic policy rate, monthly accumulated, annualised (252-day basis)</td>
+<td>BCB/SGS</td>
+<td>4189</td>
+<td>M</td>
+<td>diff</td>
+<td>1</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>% p.a.</td>
+</tr>
+<tr>
+<td>cambio_ptax</td>
+<td>Exchange rate R<span class="arithmatex">\(/US\)</span> (PTAX, selling), monthly average</td>
+<td>BCB/SGS</td>
+<td>3698</td>
+<td>M</td>
+<td>dlog</td>
+<td>1</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R<span class="arithmatex">\(/US\)</span></td>
+</tr>
+<tr>
+<td>cambio_efetivo_real</td>
+<td>Real effective exchange rate index (IPCA-deflated)</td>
+<td>BCB/SGS</td>
+<td>11752</td>
+<td>M</td>
+<td>dlog</td>
+<td>75</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>index (Jun 1994=100)</td>
+</tr>
+<tr>
+<td>reservas_internacionais</td>
+<td>International reserves, liquidity concept, end of month</td>
+<td>BCB/SGS</td>
+<td>3546</td>
+<td>M</td>
+<td>dlog</td>
+<td>3</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>US$ million</td>
+</tr>
+<tr>
+<td>icbr</td>
+<td>IC-Br commodity price index (R$), total</td>
+<td>BCB/SGS</td>
+<td>27574</td>
+<td>M</td>
+<td>dlog</td>
+<td>5</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>index (Dec 2005=100)</td>
+</tr>
+<tr>
+<td>icbr_agro</td>
+<td>IC-Br commodity price index (R$), agriculture</td>
+<td>BCB/SGS</td>
+<td>27575</td>
+<td>M</td>
+<td>dlog</td>
+<td>5</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>index (Dec 2005=100)</td>
+</tr>
+<tr>
+<td>icbr_metal</td>
+<td>IC-Br commodity price index (R$), metals</td>
+<td>BCB/SGS</td>
+<td>27576</td>
+<td>M</td>
+<td>dlog</td>
+<td>5</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>index (Dec 2005=100)</td>
+</tr>
+<tr>
+<td>icbr_energia</td>
+<td>IC-Br commodity price index (R$), energy</td>
+<td>BCB/SGS</td>
+<td>27577</td>
+<td>M</td>
+<td>dlog</td>
+<td>5</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>index (Dec 2005=100)</td>
+</tr>
+<tr>
+<td>credito_saldo_total</td>
+<td>Credit outstanding, total</td>
+<td>BCB/SGS</td>
+<td>20539</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million</td>
+</tr>
+<tr>
+<td>credito_saldo_pj</td>
+<td>Credit outstanding, non-financial corporations</td>
+<td>BCB/SGS</td>
+<td>20540</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million</td>
+</tr>
+<tr>
+<td>credito_saldo_pf</td>
+<td>Credit outstanding, households</td>
+<td>BCB/SGS</td>
+<td>20541</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million</td>
+</tr>
+<tr>
+<td>credito_saldo_livres</td>
+<td>Credit outstanding, non-earmarked (free) credit</td>
+<td>BCB/SGS</td>
+<td>20542</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million</td>
+</tr>
+<tr>
+<td>credito_concessoes_sa</td>
+<td>New credit operations, total, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>24439</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million, SA</td>
+</tr>
+<tr>
+<td>credito_concessoes_pf_sa</td>
+<td>New credit operations, households, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>24441</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million, SA</td>
+</tr>
+<tr>
+<td>credito_concessoes_pj_sa</td>
+<td>New credit operations, corporations, seasonally adjusted</td>
+<td>BCB/SGS</td>
+<td>24440</td>
+<td>M</td>
+<td>dlog</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>R$ million, SA</td>
+</tr>
+<tr>
+<td>credito_taxa_juros</td>
+<td>Average interest rate on new credit operations, total</td>
+<td>BCB/SGS</td>
+<td>20714</td>
+<td>M</td>
+<td>diff</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>% p.a.</td>
+</tr>
+<tr>
+<td>credito_spread</td>
+<td>Average spread on new credit operations, total</td>
+<td>BCB/SGS</td>
+<td>20783</td>
+<td>M</td>
+<td>diff</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>p.p.</td>
+</tr>
+<tr>
+<td>credito_inadimplencia</td>
+<td>Non-performing loans (90+ days), total</td>
+<td>BCB/SGS</td>
+<td>21082</td>
+<td>M</td>
+<td>diff</td>
+<td>28</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>%</td>
+</tr>
+<tr>
+<td>investimento_direto_pais</td>
+<td>Direct investment liabilities (FDI into Brazil), net, monthly</td>
+<td>BCB/SGS</td>
+<td>22885</td>
+<td>M</td>
+<td>annual_diff</td>
+<td>25</td>
+<td>global;financial</td>
+<td>financial</td>
+<td>US$ million</td>
+</tr>
+<tr>
+<td>focus_pib</td>
+<td>Focus survey: median expected real GDP growth, constant 12-month horizon (weighted current/next calendar year), monthly average</td>
+<td>BCB/Focus (Olinda)</td>
+<td>ExpectativasMercadoAnuais:PIB Total</td>
+<td>M</td>
+<td>diff</td>
+<td>0</td>
+<td>global;soft</td>
+<td>soft</td>
+<td>% (annual growth)</td>
+</tr>
+<tr>
+<td>focus_ipca_12m</td>
+<td>Focus survey: median expected IPCA inflation over the next 12 months (smoothed), monthly average</td>
+<td>BCB/Focus (Olinda)</td>
+<td>ExpectativasMercadoInflacao12Meses:IPCA</td>
+<td>M</td>
+<td>diff</td>
+<td>0</td>
+<td>global;soft</td>
+<td>soft</td>
+<td>% (12 months ahead)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sources-and-license">Sources and license<a class="headerlink" href="#sources-and-license" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Banco Central do Brasil - SGS (dadosabertos.bcb.gov.br), ODbL</li>
+<li>Banco Central do Brasil - Focus market expectations (Olinda API), ODbL</li>
+<li>IBGE - SIDRA (sidra.ibge.gov.br), free use with attribution</li>
+<li>IPEADATA (ipeadata.gov.br), free use citing IPEA and the original source (EPE/Eletrobras, ANP, SECEX/MDIC, Receita Federal, Ministry of Labour)</li>
+</ul>
+<p><strong>License / terms of use.</strong> Data: BCB series under the Open Data Commons Open Database License (ODbL 1.0) as published on dadosabertos.bcb.gov.br; IBGE and IPEADATA public data, free reuse with attribution of the source. Only open-license sources are included.</p>
+<p><strong>Excluded for licensing reasons:</strong></p>
+<ul>
+<li>FGV confidence indices, IGP-M/IGP-DI/IPA: FGV terms restrict redistribution</li>
+<li>CNI ICEI, industrial survey indicators: third-party (CNI) terms unclear</li>
+<li>ANFAVEA vehicle production/sales (SGS 1373, 1378): third-party (ANFAVEA) terms unclear</li>
+<li>FENABRAVE dealer sales (SGS 7384-7389): third-party (FENABRAVE) terms unclear</li>
+<li>Fecomercio consumer confidence (SGS 4393-4395): third-party (Fecomercio-SP) terms unclear</li>
+<li>ABPO corrugated cardboard, Aco Brasil steel (SGS 7357): third-party associations, terms unclear</li>
+</ul>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<p>Delays are stylised typical publication lags (days after the end of the reference month/quarter) from the 2024-2026 release calendars; GDP release dates are available exactly in load_brazil_calendar(). Seasonally adjusted series are used where the source publishes them; for unadjusted series the legend proposes 12-month transformations (dlog_yoy, annual_diff). The seasonal adjustment and the whole history of each series correspond to the latest vintage (no real-time data, see load_brazil_vintages for GDP). Focus constant-horizon expectations weight the current and next calendar year forecasts by (13-m)/12 and (m-1)/12 (Dovern, Fritsche &amp; Slacalek, 2012).</p>
+<h2 id="citation">Citation<a class="headerlink" href="#citation" title="Permanent link">&para;</a></h2>
+<p>Banco Central do Brasil (SGS, Focus); IBGE (SIDRA: Contas Nacionais Trimestrais, PIM-PF, PMC, PMS, IPCA, INPC, IPP, PNAD Continua); IPEA (IPEADATA). Compiled by nowcastbox (scripts/build_datasets/build_brazil_nowcast.py).</p>
+<h2 id="files-and-integrity">Files and integrity<a class="headerlink" href="#files-and-integrity" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>file</th>
+<th>SHA-256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>data</td>
+<td><code>brazil_nowcast.csv.gz</code></td>
+<td><code>bf67431b13b44189c5d221274748b4f362deebf5f3cb9948979166dd1fe6b503</code></td>
+</tr>
+</tbody>
+</table>
+<p>Digests are verified on first load (<code>verify=True</code>); rebuild with <code>python3 scripts/build_datasets/build_all.py</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Datasets">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Datasets
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../brazil_calendar/" class="md-footer__link md-footer__link--next" aria-label="Next: Brazilian release calendar">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Brazilian release calendar
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Gustavo Haase and Alexandre Leão Sanches — MIT License
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/NowcastBox/nowcastbox" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/nowcastbox/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
