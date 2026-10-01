@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Nowcasting with dynamic factor models in Python: two-step (Giannone-Reichlin-Small) and EM mixed-frequency (Banbura-Modugno) DFMs, Bai-Ng selection, pseudo real-time vintages, news decomposition, real-time evaluation and Brazilian data connectors"
 authors = [
     {name = "Gustavo Haase", email = "gustavo.haase@gmail.com"},
-    {name = "Alexandre Leão Sanches"},
+    {name = "Alexandre Leão Sanches", email = "a.leaosanches@gmail.com"},
 ]
 license = "MIT"
 license-files = ["LICENSE", "nowcastbox/datasets/licenses/*.txt"]
@@ -70,6 +70,8 @@ test = [
     "pytest-benchmark>=4.0.0",
     "hypothesis>=6.100.0",
     "threadpoolctl>=3.1.0",
+    "scikit-learn>=1.3.0",
+    "pyarrow>=12.0.0",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -79,9 +81,12 @@ dev = [
     "pytest-benchmark>=4.0.0",
     "hypothesis>=6.100.0",
     "threadpoolctl>=3.1.0",
+    "scikit-learn>=1.3.0",
     "pyarrow>=12.0.0",
     "ruff>=0.15.0",
-    "pyright>=1.1.400",
+    # pinned with the stubs: newer pandas-stubs/pyright releases change the type verdicts
+    "pyright==1.1.408",
+    "pandas-stubs==3.0.0.260204; python_version >= '3.11'",
     "interrogate>=1.7.0",
     "bandit>=1.7.0",
     "radon>=6.0.0",
@@ -109,7 +114,7 @@ nowcastbox = "nowcastbox.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/NowcastBox/nowcastbox"
-Documentation = "https://nowcastbox.github.io/nowcastbox/"
+Documentation = "https://nowcastbox.readthedocs.io/"
 Repository = "https://github.com/NowcastBox/nowcastbox"
 Issues = "https://github.com/NowcastBox/nowcastbox/issues"
 Changelog = "https://github.com/NowcastBox/nowcastbox/blob/main/CHANGELOG.md"

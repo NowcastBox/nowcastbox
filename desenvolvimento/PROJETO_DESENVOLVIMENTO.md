@@ -8,7 +8,7 @@
 | Campo | Valor |
 |---|---|
 | Nome do pacote (PyPI) | `nowcastbox` (nome provisório, segue o padrão `*box` do ecossistema: panelbox, kalmanbox, forecastbox, chronobox) |
-| Autores | **Gustavo Haase** (gustavo.haase@gmail.com) · **Alexandre Leão Sanches** |
+| Autores | **Gustavo Haase** (gustavo.haase@gmail.com) · **Alexandre Leão Sanches** (a.leaosanches@gmail.com) |
 | Afiliação | Programa de Pós-Graduação em Economia — Universidade Católica de Brasília (UCB). Ambos mestres e doutorandos em Economia. |
 | Licença | **MIT** (implementação independente, escrita a partir da literatura — §11) |
 | Python | ≥ 3.10 |

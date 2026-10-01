@@ -1,5 +1,7 @@
 name: Documentation
 
+# Hosting is on Read the Docs (.readthedocs.yaml); this job only checks the strict build.
+
 on:
   push:
     branches: [main]
@@ -8,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   docs:
@@ -27,9 +29,6 @@ jobs:
           pip install -e ".[docs]"
       - name: Build (strict)
         run: mkdocs build --strict
-      - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: mkdocs gh-deploy --force
       - name: Upload site artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4

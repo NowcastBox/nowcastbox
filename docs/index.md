@@ -1,5 +1,9 @@
 # NowcastBox
 
+<p align="center">
+  <img src="assets/images/logo.png" alt="NowcastBox logo" width="320">
+</p>
+
 **Nowcasting with dynamic factor models in Python.**
 
 NowcastBox estimates the present, the recent past and the near future of low-frequency

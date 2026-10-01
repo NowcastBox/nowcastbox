@@ -483,7 +483,7 @@ class ReleaseCalendar:
 
         Examples
         --------
-        >>> ReleaseCalendar({"a": 5}).with_frequencies({"a": "Q"}).frequencies.astype(str).tolist()
+        >>> [f.value for f in ReleaseCalendar({"a": 5}).with_frequencies({"a": "Q"}).frequencies]
         ['Q']
         """
         parsed = coerce_frequency_map(frequencies)

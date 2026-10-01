@@ -80,7 +80,7 @@ def test_fill_linear_and_edges(gappy):
 def test_fill_spline_matches_scipy(rng):
     t = np.arange(30.0)
     x = np.sin(t / 4)
-    s = pd.Series(x, index=pd.period_range("2000-01", periods=30, freq="M"))
+    s = pd.Series(x.copy(), index=pd.period_range("2000-01", periods=30, freq="M"))
     gaps = [5, 6, 17, 22]
     s.iloc[gaps] = np.nan
     out = fill_missing(s, "spline", frequency="M")
@@ -95,7 +95,7 @@ def test_fill_spline_matches_scipy(rng):
 def test_fill_spline_exact_on_cubic():
     t = np.arange(12.0)
     x = 0.1 * t**3 - t**2 + 2
-    s = pd.Series(x, index=pd.period_range("2000-01", periods=12, freq="M"))
+    s = pd.Series(x.copy(), index=pd.period_range("2000-01", periods=12, freq="M"))
     s.iloc[[3, 8]] = np.nan
     np.testing.assert_allclose(fill_missing(s, frequency="M"), x, atol=1e-9)
 

@@ -306,7 +306,8 @@ class TestNyFed:
         ds = nbd.load_nyfed().select(["INDPRO"])
         out = apply_transforms(ds.data).data["INDPRO"]
         x = ds.to_frame()["INDPRO"]
-        np.testing.assert_allclose(out.dropna(), 100 * x.pct_change().dropna(), rtol=1e-10)
+        expected = 100 * (x / x.shift(1) - 1)
+        np.testing.assert_allclose(out.dropna(), expected.dropna(), rtol=1e-10)
 
     def test_pca_approximates_annualised_rate(self) -> None:
         ds = nbd.load_nyfed().select(["GDPC1"])

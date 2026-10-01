@@ -1,7 +1,7 @@
 site_name: NowcastBox
 site_description: Nowcasting with dynamic factor models in Python
 site_author: Gustavo Haase and Alexandre Leão Sanches
-site_url: https://nowcastbox.github.io/nowcastbox/
+site_url: https://nowcastbox.readthedocs.io/
 
 repo_name: NowcastBox/nowcastbox
 repo_url: https://github.com/NowcastBox/nowcastbox
@@ -11,6 +11,8 @@ copyright: Copyright &copy; 2026 Gustavo Haase and Alexandre Leão Sanches — M
 
 theme:
   name: material
+  logo: assets/images/logo-icon.png
+  favicon: assets/images/favicon.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default

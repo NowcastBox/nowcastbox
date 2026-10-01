@@ -280,7 +280,7 @@ def data_quality_report(
     >>> idx = pd.period_range("2020-01", periods=12, freq="M")
     >>> x = np.r_[np.nan, np.arange(9.0), 50.0, np.nan]
     >>> rep = data_quality_report(pd.DataFrame({"x": x}, index=idx), frequency="M")
-    >>> rep.table.loc["x", ["leading_missing", "ragged_edge", "n_outliers"]].tolist()
+    >>> [int(v) for v in rep.table.loc["x", ["leading_missing", "ragged_edge", "n_outliers"]]]
     [1, 1, 1]
     """
     thr = _check_positive(outlier_threshold, "outlier_threshold")

@@ -1,13 +1,15 @@
-# NowcastBox
+<div align="center">
+  <img src="https://raw.githubusercontent.com/NowcastBox/nowcastbox/main/docs/assets/images/logo.png" alt="NowcastBox logo" width="360">
 
-**Nowcasting with dynamic factor models in Python.**
+  <p><strong>Nowcasting with dynamic factor models in Python.</strong></p>
+</div>
 
 [![Tests](https://github.com/NowcastBox/nowcastbox/actions/workflows/tests.yml/badge.svg)](https://github.com/NowcastBox/nowcastbox/actions/workflows/tests.yml)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](https://codecov.io/gh/nowcastbox/nowcastbox)
+[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](https://codecov.io/gh/NowcastBox/nowcastbox)
 [![PyPI](https://img.shields.io/badge/pypi-not%20released-lightgrey)](https://pypi.org/project/nowcastbox/)
 [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/NowcastBox/nowcastbox/blob/main/LICENSE)
-[![Docs](https://img.shields.io/badge/docs-mkdocs%20material-blue)](https://nowcastbox.github.io/nowcastbox/)
+[![Documentation](https://readthedocs.org/projects/nowcastbox/badge/?version=latest)](https://nowcastbox.readthedocs.io/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
 NowcastBox estimates the present, the recent past and the near future of low-frequency
@@ -67,7 +69,7 @@ Python ≥ 3.10. Core dependencies: numpy, pandas ≥ 2, scipy, numba, statsmode
 matplotlib, plotly, jinja2, pyyaml, requests, joblib. Extras: `[data]` (Parquet for vintage
 stores), `[docs]`, `[test]`. With many CPU cores, small dense matrix work is often faster
 with one BLAS thread (`OMP_NUM_THREADS=1`), see the
-[performance guide](https://nowcastbox.github.io/nowcastbox/user-guide/performance/).
+[performance guide](https://nowcastbox.readthedocs.io/en/latest/user-guide/performance/).
 
 ## Quickstart
 
@@ -135,7 +137,7 @@ nowcastbox snapshots history ./snapshots      # nowcast path across runs
 ## Validation
 
 The classical methods are checked against reference implementations run as black boxes
-(`tests/reference_validation/`, [`docs/validation`](https://nowcastbox.github.io/nowcastbox/validation/)):
+(`tests/reference_validation/`, [`docs/validation`](https://nowcastbox.readthedocs.io/en/latest/validation/)):
 
 | Component | Reference | Result |
 |---|---|---|
@@ -178,7 +180,7 @@ If you use NowcastBox, please cite it (see [`CITATION.cff`](https://github.com/N
 ## Authors
 
 - **Gustavo Haase** (gustavo.haase@gmail.com)
-- **Alexandre Leão Sanches**
+- **Alexandre Leão Sanches** (a.leaosanches@gmail.com)
 
 Programa de Pós-Graduação em Economia — Universidade Católica de Brasília (UCB).
 
