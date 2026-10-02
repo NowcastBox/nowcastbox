@@ -8,6 +8,11 @@ r"""Tests of equal predictive accuracy and the Model Confidence Set.
   Harvey, Leybourne & Newbold (1997):
   :math:`DM^* = DM\,\sqrt{(n + 1 - 2h + h(h-1)/n)/n}` compared with Student's
   :math:`t_{n-1}`.
+* :func:`clark_west` - Clark & West (2007) test of equal MSPE for *nested* models:
+  the larger model's squared error is adjusted for the noise of estimating
+  parameters that are zero under :math:`H_0`,
+  :math:`d_t = e_{1t}^2 - (e_{1t} - e_{2t})^2 - e_{2t}^2` (model 1 nests model 2),
+  and :math:`\sqrt{n}\,\bar d / \hat\sigma` is compared with the standard normal.
 * :func:`giacomini_white` - Giacomini & White (2006) conditional test of
   :math:`H_0: E[d_t \mid \mathcal F_{t-h}] = 0` through the moment conditions
   :math:`E[h_{t-h} d_t] = 0`: :math:`GW = n\,\bar Z' \hat\Omega^{-1} \bar Z
@@ -26,6 +31,9 @@ Business & Economic Statistics*, 13(3), 253-263.
 
 Harvey, D., Leybourne, S. & Newbold, P. (1997). Testing the equality of prediction mean
 squared errors. *International Journal of Forecasting*, 13(2), 281-291.
+
+Clark, T. E. & West, K. D. (2007). Approximately normal tests for equal predictive
+accuracy in nested models. *Journal of Econometrics*, 138(1), 291-311.
 
 Giacomini, R. & White, H. (2006). Tests of conditional predictive ability.
 *Econometrica*, 74(6), 1545-1578.
@@ -56,9 +64,13 @@ from nowcastbox.core.exceptions import DataQualityWarning, NowcastDataError
 from nowcastbox.evaluation.metrics import ArrayLike, LossLike, loss_values
 
 __all__ = [
+    "ClarkWestResult",
     "DieboldMarianoResult",
     "GiacominiWhiteResult",
     "ModelConfidenceSetResult",
+    "clark_west",
+    "clark_west_differential",
+    "clark_west_from_differential",
     "diebold_mariano",
     "giacomini_white",
     "model_confidence_set",
@@ -253,6 +265,217 @@ def _long_run_variance(centred: np.ndarray, h: int) -> float:
             (1.0 - k / h) * g for k, g in enumerate(gammas[1:], start=1)
         )
     return float(variance)
+
+
+# ====================================================================== Clark-West
+@dataclass(frozen=True)
+class ClarkWestResult:
+    r"""Result of :func:`clark_west`.
+
+    Attributes
+    ----------
+    statistic : float
+        :math:`\sqrt{n}\,\bar d / \hat\sigma` (negative: the larger model is more
+        accurate after the adjustment).
+    pvalue : float
+        p-value under the chosen alternative (standard normal).
+    mean_loss_differential : float
+        Mean adjusted loss differential :math:`\bar d`.
+    n_obs : int
+        Number of differentials used.
+    h : int
+        Forecast horizon used in the long-run variance.
+    alternative : str
+        ``"less"`` (default: the larger model is more accurate), ``"greater"`` or
+        ``"two-sided"``.
+
+    Examples
+    --------
+    >>> ClarkWestResult(-2.0, 0.02, -0.1, 40, 1, "less").reject(0.05)
+    True
+    """
+
+    statistic: float
+    pvalue: float
+    mean_loss_differential: float
+    n_obs: int
+    h: int
+    alternative: str
+
+    def reject(self, alpha: float = 0.05) -> bool:
+        """Whether :math:`H_0` (equal MSPE of the nested models) is rejected at ``alpha``.
+
+        Parameters
+        ----------
+        alpha : float, default 0.05
+            Significance level.
+
+        Returns
+        -------
+        bool
+            ``pvalue < alpha`` (False when the p-value is NaN).
+
+        Examples
+        --------
+        >>> ClarkWestResult(0.3, 0.6, 0.01, 40, 1, "less").reject()
+        False
+        """
+        return bool(self.pvalue < alpha)
+
+
+def clark_west_differential(errors_large: ArrayLike, errors_small: ArrayLike) -> np.ndarray:
+    r"""Clark-West adjusted squared-loss differential of two nested forecasts.
+
+    With forecast errors :math:`e = y - \hat y`, the difference of the two forecasts
+    is :math:`\hat y_2 - \hat y_1 = e_1 - e_2`, so the adjusted differential is
+    :math:`d_t = e_{1t}^2 - (e_{1t} - e_{2t})^2 - e_{2t}^2`.
+
+    Parameters
+    ----------
+    errors_large : array-like
+        Errors of the larger model (the one that nests the other).
+    errors_small : array-like
+        Errors of the nested (parsimonious) benchmark.
+
+    Returns
+    -------
+    numpy.ndarray
+        Adjusted differentials (NaN where an error is missing).
+
+    Raises
+    ------
+    ValueError
+        If the inputs differ in length.
+
+    Examples
+    --------
+    >>> from nowcastbox.evaluation import clark_west_differential
+    >>> clark_west_differential([1.0], [2.0]).tolist()
+    [-4.0]
+    """
+    e1 = np.asarray(errors_large, dtype=float).ravel()
+    e2 = np.asarray(errors_small, dtype=float).ravel()
+    if e1.shape != e2.shape:
+        raise ValueError("The two error series have different lengths.")
+    return e1**2 - (e1 - e2) ** 2 - e2**2
+
+
+def clark_west(
+    errors_large: ArrayLike,
+    errors_small: ArrayLike,
+    *,
+    h: int = 1,
+    alternative: str = "less",
+) -> ClarkWestResult:
+    r"""Clark-West test of equal predictive accuracy for nested models.
+
+    Under :math:`H_0` the extra parameters of the larger model are zero, and its
+    sample MSPE is biased upwards by the noise of estimating them; the adjusted
+    differential of :func:`clark_west_differential` removes that bias. The statistic
+    uses the truncated long-run variance of :func:`diebold_mariano` and standard
+    normal critical values (Clark & West, 2007). The test is usually one-sided.
+
+    Parameters
+    ----------
+    errors_large : array-like
+        Errors of the larger model (pairs with a NaN are dropped).
+    errors_small : array-like
+        Errors of the nested benchmark.
+    h : int, default 1
+        Forecast horizon: autocovariances up to lag :math:`h - 1` enter the
+        long-run variance.
+    alternative : {"less", "greater", "two-sided"}, default "less"
+        ``"less"``: the larger model is more accurate (:math:`E[d_t] < 0`).
+
+    Returns
+    -------
+    ClarkWestResult
+        Statistic and p-value.
+
+    Raises
+    ------
+    ValueError
+        If ``h`` or ``alternative`` is invalid or the inputs differ in length.
+    NowcastDataError
+        If fewer than 3 complete pairs are available.
+
+    Warns
+    -----
+    DataQualityWarning
+        If the differential is constant (NaN statistic).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from nowcastbox.evaluation import clark_west
+    >>> rng = np.random.default_rng(0)
+    >>> y = rng.normal(size=200)
+    >>> signal = 0.8 * y + rng.normal(0, 0.3, 200)
+    >>> res = clark_west(y - signal, y)
+    >>> res.statistic < 0, res.pvalue < 0.01
+    (True, True)
+    """
+    return clark_west_from_differential(
+        clark_west_differential(errors_large, errors_small), h=h, alternative=alternative
+    )
+
+
+def clark_west_from_differential(
+    differential: ArrayLike, *, h: int = 1, alternative: str = "less"
+) -> ClarkWestResult:
+    """Clark-West test on precomputed adjusted differentials.
+
+    Useful when the differentials are transformed before testing, e.g. averaged
+    within each target period (see :meth:`BacktestResults.clark_west`).
+
+    Parameters
+    ----------
+    differential : array-like
+        Adjusted differentials from :func:`clark_west_differential` (NaNs dropped).
+    h : int, default 1
+        Forecast horizon of the long-run variance.
+    alternative : {"less", "greater", "two-sided"}, default "less"
+        ``"less"``: the larger model is more accurate.
+
+    Returns
+    -------
+    ClarkWestResult
+        Statistic and p-value.
+
+    Raises
+    ------
+    ValueError
+        If ``h`` or ``alternative`` is invalid.
+    NowcastDataError
+        If fewer than 3 differentials are available.
+
+    Examples
+    --------
+    >>> from nowcastbox.evaluation import clark_west_from_differential
+    >>> res = clark_west_from_differential([-1.0, -0.5, -2.0, 0.1, -0.7])
+    >>> res.statistic < 0
+    True
+    """
+    h = _check_horizon(h)
+    if alternative not in _ALTERNATIVES:
+        raise ValueError(f"alternative must be one of {_ALTERNATIVES}, got {alternative!r}.")
+    d = np.asarray(differential, dtype=float).ravel()
+    d = d[np.isfinite(d)]
+    n = d.size
+    if n < 3:
+        raise NowcastDataError(f"The Clark-West test needs at least 3 pairs, got {n}.")
+    d_bar = float(d.mean())
+    variance = _long_run_variance(d - d_bar, h)
+    if variance <= 0:
+        warnings.warn(
+            "Constant adjusted differential: the Clark-West statistic is undefined.",
+            DataQualityWarning,
+            stacklevel=3,
+        )
+        return ClarkWestResult(np.nan, np.nan, d_bar, n, h, alternative)
+    statistic = d_bar / math.sqrt(variance / n)
+    pvalue = _p_value(statistic, alternative, stats.norm())
+    return ClarkWestResult(statistic, pvalue, d_bar, n, h, alternative)
 
 
 # ====================================================================== Giacomini-White

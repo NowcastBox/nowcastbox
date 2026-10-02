@@ -71,9 +71,11 @@ from nowcastbox.evaluation.metrics import (
     metric_by_horizon,
 )
 from nowcastbox.evaluation.tests import (
+    ClarkWestResult,
     DieboldMarianoResult,
     GiacominiWhiteResult,
     ModelConfidenceSetResult,
+    clark_west_from_differential,
     diebold_mariano,
     giacomini_white,
     model_confidence_set,
@@ -99,6 +101,8 @@ FORECAST_COLUMNS: tuple[str, ...] = (
     "error",
 )
 _KEY = ["vintage", "target_period"]
+_AGGREGATES = (None, "target_period")
+_PairTestResult = DieboldMarianoResult | GiacominiWhiteResult | ClarkWestResult
 _WINDOWS = ("expanding", "rolling")
 _ERRORS = ("raise", "warn")
 
@@ -1030,7 +1034,7 @@ class BacktestResults:
     # ------------------------------------------------------------------ tests
     def _paired(
         self, model: str, reference: str, horizon: str | None
-    ) -> list[tuple[Any, np.ndarray, np.ndarray]]:
+    ) -> list[tuple[Any, pd.DataFrame]]:
         """Aligned errors (sorted by target period, vintage) per horizon group."""
         frame = self.evaluable([model, reference])
         wide = frame.pivot_table(
@@ -1041,24 +1045,34 @@ class BacktestResults:
         ).dropna()
         wide = wide.sort_index(level=["target_period", "vintage"])
         if horizon is None:
-            groups: list[tuple[Any, pd.DataFrame]] = [("all", wide)]
-        else:
-            groups = list(wide.groupby(level=horizon, sort=True))
-        return [(label, g[model].to_numpy(), g[reference].to_numpy()) for label, g in groups]
+            return [("all", wide)]
+        return list(wide.groupby(level=horizon, sort=True))
 
     def _pairwise_table(
         self,
         reference: str | None,
         horizon: str | None,
-        test: Callable[[np.ndarray, np.ndarray], DieboldMarianoResult | GiacominiWhiteResult],
+        test: Callable[[np.ndarray, np.ndarray], _PairTestResult],
+        pair_loss: Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]],
+        aggregate: str | None,
     ) -> pd.DataFrame:
+        """Run ``test`` on the (optionally per-period averaged) losses of each model."""
         ref = self._reference(reference)
+        _check_aggregate(aggregate)
         rows = []
         for model in self.models:
             if model == ref:
                 continue
-            for label, e_model, e_ref in self._paired(model, ref, horizon):
-                rows.append({"model": model, "horizon": label, **_test_row(test, e_model, e_ref)})
+            for label, group in self._paired(model, ref, horizon):
+                l_model, l_ref = pair_loss(group[model].to_numpy(), group[ref].to_numpy())
+                if aggregate is not None:
+                    losses = pd.DataFrame(
+                        {"model": l_model, "ref": l_ref},
+                        index=group.index.get_level_values(aggregate),
+                    )
+                    losses = losses.groupby(level=0, sort=True).mean()
+                    l_model, l_ref = losses["model"].to_numpy(), losses["ref"].to_numpy()
+                rows.append({"model": model, "horizon": label, **_test_row(test, l_model, l_ref)})
         columns = ["model", "horizon", "statistic", "pvalue", "mean_loss_differential", "n_obs"]
         return pd.DataFrame(rows, columns=columns).set_index(["model", "horizon"])
 
@@ -1071,12 +1085,21 @@ class BacktestResults:
         h: int = 1,
         hln: bool = True,
         alternative: str = "two-sided",
+        aggregate: str | None = None,
     ) -> pd.DataFrame:
         r"""Diebold-Mariano (HLN) tests of every model against a reference.
 
         The loss differential is :math:`L(e_{\text{model}}) - L(e_{\text{reference}})`
         (negative statistic: the model is more accurate), computed per horizon group
         over target periods (ordered in time).
+
+        When a horizon group holds several vintages per target period (e.g. the three
+        monthly nowcasts of a quarter grouped by ``"kind"``, or ``horizon=None``), the
+        differentials of the same target period are strongly correlated and the
+        truncated long-run variance with ``h=1`` overstates significance. Pass
+        ``aggregate="target_period"`` to average the losses within each target period
+        first (one differential per period) and set ``h`` to the number of target
+        periods ahead of the longest forecast in the group.
 
         Parameters
         ----------
@@ -1092,6 +1115,8 @@ class BacktestResults:
             Harvey-Leybourne-Newbold correction.
         alternative : {"two-sided", "less", "greater"}, default "two-sided"
             Alternative hypothesis.
+        aggregate : {None, "target_period"}, default None
+            Average the losses within each target period before testing.
 
         Returns
         -------
@@ -1099,15 +1124,73 @@ class BacktestResults:
             Index ``(model, horizon)``; columns ``statistic``, ``pvalue``,
             ``mean_loss_differential``, ``n_obs`` (NaN when fewer than 3 pairs).
 
+        Raises
+        ------
+        ValueError
+            If ``aggregate`` is invalid or the reference is unknown.
+
         Examples
         --------
         >>> res.diebold_mariano("AR")  # doctest: +SKIP
+        >>> res.diebold_mariano("AR", "kind", aggregate="target_period", h=2)  # doctest: +SKIP
         """
 
-        def test(e1: np.ndarray, e2: np.ndarray) -> DieboldMarianoResult:
-            return diebold_mariano(e1, e2, h=h, loss=loss, alternative=alternative, hln=hln)
+        def test(l1: np.ndarray, l2: np.ndarray) -> DieboldMarianoResult:
+            return diebold_mariano(l1, l2, h=h, loss=_identity, alternative=alternative, hln=hln)
 
-        return self._pairwise_table(reference, horizon, test)
+        return self._pairwise_table(reference, horizon, test, _loss_pair(loss), aggregate)
+
+    def clark_west(
+        self,
+        reference: str | None = None,
+        horizon: str | None = "months_to_end",
+        *,
+        h: int = 1,
+        alternative: str = "less",
+        aggregate: str | None = None,
+    ) -> pd.DataFrame:
+        r"""Clark-West tests of every model against a *nested* benchmark.
+
+        Use it when the reference (e.g. an AR) is nested in the competing models, where
+        the Diebold-Mariano test is undersized (Clark & West, 2007; see
+        :func:`~nowcastbox.evaluation.clark_west`). Squared loss only; negative
+        statistic: the larger model is more accurate.
+
+        Parameters
+        ----------
+        reference : str, optional
+            Nested benchmark (default: the first benchmark).
+        horizon : str or None, default "months_to_end"
+            Grouping column (``None``: pooled).
+        h : int, default 1
+            Horizon of the long-run variance.
+        alternative : {"less", "greater", "two-sided"}, default "less"
+            ``"less"``: the larger model is more accurate.
+        aggregate : {None, "target_period"}, default None
+            Average the adjusted losses within each target period before testing (see
+            :meth:`diebold_mariano`).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Index ``(model, horizon)``; columns ``statistic``, ``pvalue``,
+            ``mean_loss_differential`` (adjusted), ``n_obs``.
+
+        Raises
+        ------
+        ValueError
+            If ``aggregate`` is invalid or the reference is unknown.
+
+        Examples
+        --------
+        >>> res.clark_west("AR", "kind", aggregate="target_period")  # doctest: +SKIP
+        """
+
+        def test(l1: np.ndarray, l2: np.ndarray) -> ClarkWestResult:
+            # l1 - l2 is the Clark-West adjusted differential (see _clark_west_pair)
+            return clark_west_from_differential(l1 - l2, h=h, alternative=alternative)
+
+        return self._pairwise_table(reference, horizon, test, _clark_west_pair, aggregate)
 
     def giacomini_white(
         self,
@@ -1116,6 +1199,7 @@ class BacktestResults:
         *,
         loss: LossLike = "squared",
         h: int = 1,
+        aggregate: str | None = None,
     ) -> pd.DataFrame:
         """Giacomini-White conditional tests of every model against a reference.
 
@@ -1129,6 +1213,9 @@ class BacktestResults:
             Loss function.
         h : int, default 1
             Forecast horizon (lag of the default instruments).
+        aggregate : {None, "target_period"}, default None
+            Average the losses within each target period before testing (see
+            :meth:`diebold_mariano`).
 
         Returns
         -------
@@ -1136,15 +1223,20 @@ class BacktestResults:
             Index ``(model, horizon)``; columns ``statistic``, ``pvalue``,
             ``mean_loss_differential``, ``n_obs``.
 
+        Raises
+        ------
+        ValueError
+            If ``aggregate`` is invalid or the reference is unknown.
+
         Examples
         --------
         >>> res.giacomini_white("AR", horizon=None)  # doctest: +SKIP
         """
 
-        def test(e1: np.ndarray, e2: np.ndarray) -> GiacominiWhiteResult:
-            return giacomini_white(e1, e2, h=h, loss=loss)
+        def test(l1: np.ndarray, l2: np.ndarray) -> GiacominiWhiteResult:
+            return giacomini_white(l1, l2, h=h, loss=_identity)
 
-        return self._pairwise_table(reference, horizon, test)
+        return self._pairwise_table(reference, horizon, test, _loss_pair(loss), aggregate)
 
     def loss_table(
         self, *, loss: LossLike = "squared", models: Sequence[str] | None = None
@@ -1188,6 +1280,7 @@ class BacktestResults:
         block_length: int | None = None,
         random_state: int | np.random.Generator | None = 0,
         models: Sequence[str] | None = None,
+        aggregate: str | None = None,
     ) -> ModelConfidenceSetResult | dict[Any, ModelConfidenceSetResult]:
         r"""Model Confidence Set (Hansen, Lunde & Nason, 2011) of the evaluated models.
 
@@ -1209,16 +1302,25 @@ class BacktestResults:
             Seed (fixed by default).
         models : sequence of str, optional
             Models (default: all).
+        aggregate : {None, "target_period"}, default None
+            Average the losses within each target period before bootstrapping (see
+            :meth:`diebold_mariano`).
 
         Returns
         -------
         ModelConfidenceSetResult or dict
             One result, or ``{horizon value: result}``.
 
+        Raises
+        ------
+        ValueError
+            If ``aggregate`` is invalid.
+
         Examples
         --------
         >>> res.mcs(alpha=0.25).included  # doctest: +SKIP
         """
+        _check_aggregate(aggregate)
         table = self.loss_table(loss=loss, models=models)
         options = {
             "alpha": alpha,
@@ -1228,12 +1330,14 @@ class BacktestResults:
             "random_state": random_state,
         }
         if horizon is None:
-            return model_confidence_set(table, **options)
+            return model_confidence_set(_per_period(table, aggregate), **options)
         frame = self.evaluable(models)
         labels = frame.set_index([*_KEY, "months_to_end"], drop=False)[horizon]
         labels = labels[~labels.index.duplicated()].reindex(table.index)
         return {
-            key: model_confidence_set(table.iloc[np.flatnonzero(labels == key)], **options)
+            key: model_confidence_set(
+                _per_period(table.iloc[np.flatnonzero(labels == key)], aggregate), **options
+            )
             for key in sorted(labels.dropna().unique())
         }
 
@@ -1289,8 +1393,38 @@ def _fmt_date(value: Any) -> str:
     return "-" if pd.isna(value) else str(pd.Timestamp(value).date())
 
 
+def _check_aggregate(aggregate: str | None) -> None:
+    if aggregate not in _AGGREGATES:
+        raise ValueError(f"aggregate must be one of {_AGGREGATES}, got {aggregate!r}.")
+
+
+def _per_period(table: pd.DataFrame, aggregate: str | None) -> pd.DataFrame:
+    """Average a loss table within each target period (no-op when ``aggregate`` is None)."""
+    if aggregate is None:
+        return table
+    return table.groupby(level=aggregate, sort=True).mean()
+
+
+def _identity(values: np.ndarray) -> np.ndarray:
+    return values
+
+
+def _loss_pair(
+    loss: LossLike,
+) -> Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+    def pair(e_model: np.ndarray, e_ref: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return loss_values(e_model, loss), loss_values(e_ref, loss)
+
+    return pair
+
+
+def _clark_west_pair(e_model: np.ndarray, e_ref: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Adjusted squared loss of the larger model and squared loss of the nested one."""
+    return e_model**2 - (e_model - e_ref) ** 2, e_ref**2
+
+
 def _test_row(
-    test: Callable[[np.ndarray, np.ndarray], DieboldMarianoResult | GiacominiWhiteResult],
+    test: Callable[[np.ndarray, np.ndarray], _PairTestResult],
     e_model: np.ndarray,
     e_ref: np.ndarray,
 ) -> dict[str, float]:

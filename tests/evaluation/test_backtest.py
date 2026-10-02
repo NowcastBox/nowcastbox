@@ -21,6 +21,8 @@ from nowcastbox.evaluation import (
     BacktestResults,
     ModelConfidenceSetResult,
     PseudoRealTimeBacktest,
+    clark_west,
+    diebold_mariano,
 )
 from nowcastbox.models import TwoStepDFM
 from nowcastbox.vintages import ReleaseCalendar, VintageStore, pseudo_real_time, vintage_dates
@@ -466,6 +468,59 @@ class TestResults:
         assert dm.loc[("BridgeBenchmark", 0), "statistic"] < 0
         pooled = results.diebold_mariano("RandomWalk", horizon=None, alternative="less")
         assert pooled.loc[("BridgeBenchmark", "all"), "pvalue"] < 0.05
+
+    def test_dm_aggregate_by_target_period(self, results) -> None:
+        pooled = results.diebold_mariano("RandomWalk", horizon="kind")
+        agg = results.diebold_mariano("RandomWalk", horizon="kind", aggregate="target_period")
+        frame = results.evaluable(["BridgeBenchmark", "RandomWalk"])
+        for kind in ("backcast", "nowcast"):
+            key = ("BridgeBenchmark", kind)
+            n_periods = frame.loc[frame["kind"] == kind, "target_period"].nunique()
+            assert agg.loc[key, "n_obs"] == n_periods <= pooled.loc[key, "n_obs"]
+        key = ("BridgeBenchmark", "nowcast")
+        assert agg.loc[key, "n_obs"] < pooled.loc[key, "n_obs"]
+        # manual: average the squared-loss differential within each target period
+        sub = frame[frame["kind"] == "nowcast"].pivot_table(
+            index=["target_period", "vintage"], columns="model", values="error"
+        )
+        d = (sub["BridgeBenchmark"] ** 2 - sub["RandomWalk"] ** 2).groupby(level=0).mean()
+        expected = diebold_mariano(d.to_numpy(), np.zeros(d.size), loss=lambda e: e, h=2)
+        got = results.diebold_mariano("RandomWalk", horizon="kind", aggregate="target_period", h=2)
+        assert got.loc[("BridgeBenchmark", "nowcast"), "statistic"] == pytest.approx(
+            expected.statistic
+        )
+        with pytest.raises(ValueError, match="aggregate"):
+            results.diebold_mariano(aggregate="vintage")
+
+    def test_clark_west(self, results) -> None:
+        cw = results.clark_west("RandomWalk", horizon=None)
+        dm = results.diebold_mariano("RandomWalk", horizon=None)
+        key = ("BridgeBenchmark", "all")
+        assert cw.loc[key, "statistic"] < dm.loc[key, "statistic"]
+        assert cw.loc[key, "pvalue"] < 0.05
+        agg = results.clark_west("RandomWalk", horizon="kind", aggregate="target_period")
+        assert agg["n_obs"].gt(0).all()
+        frame = results.evaluable(["AR", "RandomWalk"])
+        sub = frame.pivot_table(index=["target_period", "vintage"], columns="model", values="error")
+        manual = clark_west(sub["AR"].to_numpy(), sub["RandomWalk"].to_numpy())
+        got = results.clark_west("RandomWalk", horizon=None).loc[("AR", "all")]
+        assert got["statistic"] == pytest.approx(manual.statistic)
+
+    def test_gw_and_mcs_aggregate(self, results) -> None:
+        gw = results.giacomini_white(horizon=None, aggregate="target_period")
+        n_periods = results.evaluable()["target_period"].nunique()
+        assert gw["n_obs"].max() <= n_periods
+        pooled = results.mcs(n_bootstrap=100, aggregate="target_period")
+        assert isinstance(pooled, ModelConfidenceSetResult)
+        by = results.mcs(
+            horizon="kind",
+            n_bootstrap=50,
+            models=["AR", "BridgeBenchmark"],
+            aggregate="target_period",
+        )
+        assert isinstance(by, dict) and sorted(by) == ["backcast", "forecast", "nowcast"]
+        with pytest.raises(ValueError, match="aggregate"):
+            results.mcs(aggregate="month")
 
     def test_dm_with_too_few_pairs(self, data) -> None:
         res = backtest(data, start="2008-01-15", end="2008-02-15").run()

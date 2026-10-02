@@ -2,10 +2,10 @@
 
 Pseudo real-time (and real-time, with a :class:`~nowcastbox.vintages.VintageStore`)
 backtesting, accuracy metrics by nowcast horizon and forecast comparison tests
-(Diebold-Mariano with the Harvey-Leybourne-Newbold correction, Giacomini-White,
-Model Confidence Set) and density scores (:mod:`nowcastbox.evaluation.scoring`: CRPS, log
-score, PIT, Berkowitz/KS uniformity, interval coverage and Christoffersen tests,
-quantile scores; innovation I5).
+(Diebold-Mariano with the Harvey-Leybourne-Newbold correction, Clark-West for nested
+models, Giacomini-White, Model Confidence Set) and density scores
+(:mod:`nowcastbox.evaluation.scoring`: CRPS, log score, PIT, Berkowitz/KS uniformity,
+interval coverage and Christoffersen tests, quantile scores; innovation I5).
 
 Examples
 --------
@@ -58,9 +58,13 @@ from nowcastbox.evaluation.scoring import (
     weighted_quantile_score,
 )
 from nowcastbox.evaluation.tests import (
+    ClarkWestResult,
     DieboldMarianoResult,
     GiacominiWhiteResult,
     ModelConfidenceSetResult,
+    clark_west,
+    clark_west_differential,
+    clark_west_from_differential,
     diebold_mariano,
     giacomini_white,
     model_confidence_set,
@@ -71,6 +75,7 @@ __all__ = [
     "METRICS",
     "BacktestResults",
     "BerkowitzTestResult",
+    "ClarkWestResult",
     "CoverageTestResult",
     "DieboldMarianoResult",
     "GiacominiWhiteResult",
@@ -81,6 +86,9 @@ __all__ = [
     "berkowitz_test",
     "bias",
     "christoffersen_test",
+    "clark_west",
+    "clark_west_differential",
+    "clark_west_from_differential",
     "crps",
     "crps_gaussian",
     "crps_mixture",

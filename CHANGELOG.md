@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `clark_west`, `clark_west_differential`, `clark_west_from_differential` and
+  `BacktestResults.clark_west`: Clark & West (2007) test for nested models.
+- `aggregate="target_period"` in `BacktestResults.diebold_mariano`, `giacomini_white`,
+  `clark_west` and `mcs`: average the losses within each target period before testing,
+  so that the correlated monthly nowcasts of the same quarter are not treated as
+  independent observations when horizons are pooled.
+
 ### Fixed (post-audit)
 
 - Look-ahead bias in the pipeline backtest: `outputs.backtest` used the panel already cleaned on

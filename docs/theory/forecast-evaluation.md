@@ -39,6 +39,27 @@ $$
 DM^\ast = DM \sqrt{\frac{n + 1 - 2h + h(h-1)/n}{n}}, \qquad DM^\ast \sim t_{n-1}.
 $$
 
+When several nowcasts of the same target period are pooled (e.g. the three monthly
+nowcasts of a quarter), their differentials are strongly correlated and $\hat V$ with
+$h = 1$ understates the variance of $\bar d$. `aggregate="target_period"` averages the
+losses within each target period, so that $n$ is the number of periods.
+
+## Clark-West test
+
+When model 1 nests model 2 (e.g. a bridge equation or a DFM that includes the
+autoregressive terms of an AR benchmark), the population MSPEs are equal under $H_0$ but
+the larger model's sample MSPE is inflated by the noise of estimating parameters that are
+zero, and the DM test is undersized. Clark & West (2007) adjust the differential,
+
+$$
+d_t = e_{1t}^2 - (\hat y_{2t} - \hat y_{1t})^2 - e_{2t}^2
+    = e_{1t}^2 - (e_{1t} - e_{2t})^2 - e_{2t}^2 ,
+$$
+
+and compare $\bar d / \sqrt{\hat V / n}$ (same $\hat V$ as above) with standard normal
+critical values, usually one-sided ($\mathbb E[d_t] < 0$: the larger model is more
+accurate).
+
 ## Giacomini-White test
 
 The conditional test of Giacomini & White (2006) asks whether the loss differential is

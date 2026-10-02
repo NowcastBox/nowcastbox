@@ -174,7 +174,7 @@ def build_tasks() -> dict[str, tuple[str, Task]]:
             lambda: MixedFreqDFM(n_factors=2).fit(sim, "gdp", frequency={"gdp": "Q"}),
         ),
         "nyfed_em": (
-            "EM, NYFED (4 blocks, 53 states)",
+            "EM, NYFED (4 blocks, 49 states)",
             lambda: MixedFreqDFM(n_factors=1, blocks=ny_blocks).fit(
                 ny_panel, "GDPC1", frequency=ny_freq
             ),

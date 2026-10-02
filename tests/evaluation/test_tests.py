@@ -13,6 +13,9 @@ from scipy import stats
 
 from nowcastbox.core.exceptions import DataQualityWarning, NowcastDataError
 from nowcastbox.evaluation import (
+    clark_west,
+    clark_west_differential,
+    clark_west_from_differential,
     diebold_mariano,
     giacomini_white,
     model_confidence_set,
@@ -96,6 +99,64 @@ class TestDieboldMariano:
             for _ in range(400)
         ]
         assert 0.02 <= np.mean(rejections) <= 0.09
+
+
+class TestClarkWest:
+    def test_matches_textbook_formula(self, rng) -> None:
+        y = rng.normal(size=80)
+        f_small = np.zeros(80)
+        f_large = 0.3 * y + rng.normal(0, 0.5, 80)
+        e1, e2 = y - f_large, y - f_small
+        f = e2**2 - (e1**2 - (f_small - f_large) ** 2)  # Clark & West (2007), eq. (2.2)
+        n = f.size
+        c = f - f.mean()
+        gamma = [c[k:] @ c[: n - k] / n for k in range(2)]
+        cw = f.mean() / math.sqrt((gamma[0] + 2 * gamma[1]) / n)
+        res = clark_west(e1, e2, h=2)
+        assert res.statistic == pytest.approx(-cw)
+        assert res.pvalue == pytest.approx(stats.norm.sf(cw))
+        assert res.mean_loss_differential == pytest.approx(-f.mean())
+        assert res.n_obs == n and res.h == 2 and res.alternative == "less"
+
+    def test_adjustment_favours_the_larger_model(self, rng) -> None:
+        y = rng.normal(size=60)
+        e_small = y
+        e_large = y - rng.normal(0, 0.4, 60)  # pure estimation noise
+        dm = diebold_mariano(e_large, e_small)
+        cw = clark_west(e_large, e_small)
+        assert cw.statistic < dm.statistic
+
+    def test_from_differential_and_alternatives(self, rng) -> None:
+        e1, e2 = rng.normal(0, 1, 50), rng.normal(0, 2, 50)
+        d = clark_west_differential(e1, e2)
+        base = clark_west(e1, e2)
+        assert clark_west_from_differential(d).statistic == pytest.approx(base.statistic)
+        greater = clark_west(e1, e2, alternative="greater")
+        assert greater.pvalue == pytest.approx(1 - base.pvalue)
+        two = clark_west(e1, e2, alternative="two-sided")
+        assert two.pvalue == pytest.approx(2 * min(base.pvalue, greater.pvalue))
+        assert base.reject()
+
+    def test_drops_missing_pairs(self, rng) -> None:
+        e1, e2 = rng.normal(size=20), rng.normal(size=20)
+        e2[:4] = np.nan
+        assert clark_west(e1, e2).n_obs == 16
+
+    def test_constant_differential(self) -> None:
+        with pytest.warns(DataQualityWarning, match="Constant"):
+            res = clark_west(np.zeros(6), np.zeros(6))
+        assert np.isnan(res.statistic)
+        assert not res.reject()
+
+    def test_errors(self) -> None:
+        with pytest.raises(NowcastDataError, match="at least 3"):
+            clark_west([1.0, 2.0], [0.0, 1.0])
+        with pytest.raises(ValueError, match="h must be"):
+            clark_west([1.0] * 5, [0.0] * 5, h=0)
+        with pytest.raises(ValueError, match="alternative"):
+            clark_west([1.0] * 5, [0.0] * 5, alternative="two")
+        with pytest.raises(ValueError, match="different lengths"):
+            clark_west_differential([1.0] * 5, [0.0] * 4)
 
 
 class TestGiacominiWhite:
