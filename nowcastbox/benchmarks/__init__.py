@@ -1,6 +1,7 @@
 """Benchmark forecasters.
 
-AR(p), random walk, historical mean, bridge equations, U-MIDAS and MIDAS
+AR(p), random walk, historical mean, bridge equations, the combination of all small
+bridge equations (Bańbura, Belousova, Bodnár & Tóth, 2023), U-MIDAS and MIDAS
 (exponential Almon / Beta lag polynomials) and an adapter for any scikit-learn
 compatible regressor (plan innovation I11). All implement
 :class:`nowcastbox.core.base.BaseBenchmark`: ``fit(data, target)`` on one vintage and
@@ -20,6 +21,7 @@ True
 
 from nowcastbox.benchmarks.ar import AR
 from nowcastbox.benchmarks.bridge import BridgeBenchmark
+from nowcastbox.benchmarks.bridge_combination import BridgeCombinationBenchmark
 from nowcastbox.benchmarks.mean import HistoricalMean
 from nowcastbox.benchmarks.midas import MIDAS, UMIDAS, beta_weights, exp_almon_weights
 from nowcastbox.benchmarks.random_walk import RandomWalk
@@ -30,6 +32,7 @@ __all__ = [
     "MIDAS",
     "UMIDAS",
     "BridgeBenchmark",
+    "BridgeCombinationBenchmark",
     "HistoricalMean",
     "RandomWalk",
     "SklearnBenchmark",

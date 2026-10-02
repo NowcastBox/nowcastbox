@@ -7,7 +7,10 @@ The templates live in ``nowcastbox/pipeline/templates/*.yaml``:
 - ``simulated`` — small and fast example on the simulated dataset (pseudo real-time
   vintage, news against an earlier vintage, density, diagnostics, report);
 - ``csv`` — your own data from a CSV file with metadata in the spec;
-- ``connectors`` — live data from the BCB/SGS and IBGE/SIDRA APIs.
+- ``connectors`` — live data from the BCB/SGS and IBGE/SIDRA APIs;
+- ``model_building`` — the ECB toolbox workflow on the simulated dataset:
+  pre-selection, specification search, Covid robustness, nowcast with the best
+  specification (``selection`` section).
 """
 
 from __future__ import annotations
@@ -36,7 +39,7 @@ def list_templates() -> list[str]:
     Examples
     --------
     >>> list_templates()
-    ['brazil_pib', 'connectors', 'csv', 'simulated']
+    ['brazil_pib', 'connectors', 'csv', 'model_building', 'simulated']
     """
     return sorted(p.stem for p in _folder().glob("*.yaml"))
 

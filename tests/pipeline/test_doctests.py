@@ -15,6 +15,8 @@ MODULES = [
     "nowcastbox.pipeline.examples",
     "nowcastbox.pipeline.snapshots",
     "nowcastbox.pipeline.runner",
+    "nowcastbox.pipeline.selection",
+    "nowcastbox.pipeline._common",
     "nowcastbox.cli.main",
 ]
 

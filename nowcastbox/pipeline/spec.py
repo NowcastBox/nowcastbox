@@ -40,6 +40,17 @@ import pandas as pd
 import yaml
 
 from nowcastbox.core.exceptions import NowcastBoxError
+from nowcastbox.pipeline._common import plain as _plain
+from nowcastbox.pipeline.selection import (
+    PRESELECT_EXCLUDED,
+    ROBUSTNESS_KEYS,
+    SEARCH_BACKTEST_KEYS,
+    SEARCH_KEYS,
+    SEARCH_OPTIONS,
+    PreselectSpec,
+    SearchSpec,
+    SelectionSpec,
+)
 
 __all__ = [
     "CONNECTOR_SOURCES",
@@ -66,7 +77,7 @@ __all__ = [
     "load_spec",
 ]
 
-MODEL_TYPES: tuple[str, ...] = ("MixedFreqDFM", "TwoStepDFM")
+MODEL_TYPES: tuple[str, ...] = ("MixedFreqDFM", "TwoStepDFM", "BridgeCombination")
 """Estimators a spec can name (``model.type``)."""
 
 FILE_SOURCES: tuple[str, ...] = ("csv", "parquet")
@@ -103,7 +114,15 @@ _MODEL_ALIASES: dict[str, str] = {
     "two_step_dfm": "TwoStepDFM",
     "two_step": "TwoStepDFM",
     "twostep": "TwoStepDFM",
+    "bridgecombination": "BridgeCombination",
+    "bridge_combination": "BridgeCombination",
 }
+_METHODS = {
+    "MixedFreqDFM": "em",
+    "TwoStepDFM": "two_step",
+    "BridgeCombination": "bridge_combination",
+}
+_FACTOR_KEYS = ("factors", "n_factors", "factor_lags", "blocks", "n_shocks", "robust", "rmax")
 _OUTPUT_ALIASES: dict[str, str] = {
     "report": "report_html",
     "html": "report_html",
@@ -122,6 +141,7 @@ _TOP_KEYS = (
     "preprocessing",
     "model",
     "outputs",
+    "selection",
     "snapshot_dir",
     "random_state",
 )
@@ -344,19 +364,6 @@ def _str_list(value: Any, path: str, issues: _Issues) -> tuple[str, ...] | None:
         issues.add(path, "must be a list of names")
         return None
     return tuple(str(v) for v in value)
-
-
-def _plain(value: Any) -> Any:
-    """YAML-safe copy of ``value`` (dates to ISO strings, tuples to lists)."""
-    if isinstance(value, Mapping):
-        return {str(k): _plain(v) for k, v in value.items()}
-    if isinstance(value, list | tuple):
-        return [_plain(v) for v in value]
-    if isinstance(value, _dt.date):
-        return value.isoformat()
-    if isinstance(value, Path):
-        return str(value)
-    return value
 
 
 def _known_kwargs(func: Callable[..., Any], exclude: Iterable[str] = ()) -> list[str]:
@@ -796,8 +803,10 @@ class ModelSpec:
 
     Parameters
     ----------
-    type : {"MixedFreqDFM", "TwoStepDFM"}
-        Estimator class.
+    type : {"MixedFreqDFM", "TwoStepDFM", "BridgeCombination"}
+        Estimator class (``bridge_combination`` is an alias of
+        :class:`~nowcastbox.models.BridgeCombination`, which takes no factor settings:
+        its options are ``max_monthly``, ``combine``, ``extrapolation``...).
     n_factors : int, dict or "auto"
         Number of factors (per block with a mapping, plan §6.2 ``factors``);
         ``"auto"``: Bai & Ng (2002) criterion.
@@ -837,15 +846,15 @@ class ModelSpec:
 
     @property
     def method(self) -> str:
-        """``"em"`` or ``"two_step"`` (the :func:`nowcastbox.nowcast` method)."""
-        return "em" if self.type == "MixedFreqDFM" else "two_step"
+        """``"em"``, ``"two_step"`` (the :func:`nowcastbox.nowcast` methods) or ``"bridge_combination"``."""
+        return _METHODS[self.type]
 
     @property
     def estimator_class(self) -> type:
         """The estimator class named by :attr:`type`."""
-        from nowcastbox.models import MixedFreqDFM, TwoStepDFM
+        from nowcastbox import models
 
-        return MixedFreqDFM if self.type == "MixedFreqDFM" else TwoStepDFM
+        return getattr(models, self.type)
 
     def to_dict(self) -> dict[str, Any]:
         """YAML-ready mapping.
@@ -859,7 +868,11 @@ class ModelSpec:
         --------
         >>> ModelSpec(type="TwoStepDFM", n_factors=2).to_dict()["factors"]
         2
+        >>> ModelSpec(type="BridgeCombination", options={"combine": "median"}).to_dict()
+        {'type': 'BridgeCombination', 'horizon': 1, 'combine': 'median'}
         """
+        if self.type == "BridgeCombination":
+            return {"type": self.type, "horizon": self.horizon, **_plain(self.options)}
         out: dict[str, Any] = {
             "type": self.type,
             "factors": _plain(self.n_factors),
@@ -893,6 +906,8 @@ def _parse_model(raw: Any, issues: _Issues) -> ModelSpec | None:
     options = {**{k: v for k, v in model.items() if k not in _MODEL_KEYS}, **extra}
     allowed = _known_kwargs(spec.estimator_class.__init__)
     structural = ("n_factors", "factor_lags", "blocks", "horizon", "n_shocks")
+    if mtype == "BridgeCombination":
+        return _parse_bridge_combination(model, options, allowed, issues)
     issues.check_keys(options, [a for a in allowed if a not in structural] + ["robust"], "model")
     if "factors" in model and "n_factors" in model:
         issues.add("model.n_factors", "give either 'factors' or 'n_factors', not both")
@@ -916,6 +931,23 @@ def _parse_model(raw: Any, issues: _Issues) -> ModelSpec | None:
         rmax=_integer(model.get("rmax"), "model.rmax", issues, minimum=1, default=8) or 8,
         criterion=_string(model.get("criterion"), "model.criterion", issues) or "IC2",
         options=options,
+    )
+
+
+def _parse_bridge_combination(
+    model: Mapping[str, Any], options: dict[str, Any], allowed: list[str], issues: _Issues
+) -> ModelSpec:
+    """``model.type: bridge_combination``: no factor settings, estimator options only."""
+    for key in (*_FACTOR_KEYS, "criterion"):
+        if key in model:
+            issues.add(f"model.{key}", "is not an option of BridgeCombination (no factors)")
+    issues.check_keys(options, [a for a in allowed if a != "horizon"], "model")
+    horizon = _integer(model.get("horizon"), "model.horizon", issues, minimum=0, default=1)
+    return ModelSpec(
+        type="BridgeCombination",
+        n_factors=0,
+        horizon=1 if horizon is None else horizon,
+        options={k: v for k, v in options.items() if k in allowed},
     )
 
 
@@ -1587,6 +1619,150 @@ def _parse_benchmarks(
     return tuple(out)
 
 
+# ---------------------------------------------------------------------------- selection
+def _parse_selection(raw: Any, issues: _Issues, base_dir: Path | None) -> SelectionSpec:
+    """Parse and validate the ``selection`` section of a spec.
+
+    Parameters
+    ----------
+    raw : mapping or None
+        The ``selection`` section.
+    issues : _Issues
+        Problem collector of the spec parser.
+    base_dir : pathlib.Path, optional
+        Directory for a relative ``checkpoint``.
+
+    Returns
+    -------
+    SelectionSpec
+        Parsed stages (empty when ``raw`` is ``None`` or invalid).
+
+    Examples
+    --------
+    >>> issues = _Issues()
+    >>> _parse_selection({"preselect": {"top": 5}}, issues, None).preselect.options
+    {'top': 5}
+    >>> _parse_selection({"preselect": {"tops": 5}}, issues, None).empty, len(issues.items)
+    (False, 1)
+    """
+    if raw is None:
+        return SelectionSpec()
+    section = _mapping(raw, "selection", issues)
+    if section is None:
+        return SelectionSpec()
+    issues.check_keys(section, ("preselect", "search"), "selection")
+    pre = None
+    if section.get("preselect") is not None:
+        pre = _parse_preselect(section["preselect"], issues)
+    search = None
+    if section.get("search") is not None:
+        search = _parse_search(section["search"], issues, base_dir)
+    return SelectionSpec(preselect=pre, search=search)
+
+
+def _parse_preselect(raw: Any, issues: _Issues) -> PreselectSpec | None:
+    from nowcastbox.selection import preselect
+
+    path = "selection.preselect"
+    options = {} if raw is True else _mapping(raw, path, issues)
+    if options is None:
+        return None
+    allowed = _known_kwargs(preselect, PRESELECT_EXCLUDED)
+    issues.check_keys(options, [*allowed, "apply"], path)
+    apply = _boolean(options.get("apply"), f"{path}.apply", issues, default=True)
+    return PreselectSpec(
+        options={k: v for k, v in options.items() if k in allowed},
+        apply=apply,
+    )
+
+
+def _parse_search(raw: Any, issues: _Issues, base_dir: Path | None) -> SearchSpec | None:
+    path = "selection.search"
+    search = _mapping(raw, path, issues)
+    if search is None:
+        return None
+    issues.check_keys(search, SEARCH_KEYS, path)
+    space = _parse_space(search.get("space"), f"{path}.space", issues)
+    backtest, benchmarks = _parse_search_backtest(search.get("backtest"), issues)
+    checkpoint = _absolute(
+        _string(search.get("checkpoint"), f"{path}.checkpoint", issues),
+        base_dir if base_dir is not None else Path.cwd(),
+    )
+    if space is None:
+        return None
+    return SearchSpec(
+        space=space,
+        n_draws=_parse_draws(search, issues),
+        ranking=search.get("ranking"),
+        backtest=backtest,
+        benchmarks=benchmarks,
+        options={k: search[k] for k in SEARCH_OPTIONS if search.get(k) is not None},
+        checkpoint=checkpoint,
+        robustness=_parse_robustness(search.get("covid_robustness"), issues),
+        apply=_boolean(search.get("apply"), f"{path}.apply", issues, default=False),
+    )
+
+
+def _parse_space(raw: Any, path: str, issues: _Issues) -> dict[str, Any] | None:
+    from nowcastbox.selection import ParameterSpace
+
+    if raw is None:
+        issues.add(path, "is required (e.g. {n_factors: [1, 2], n_series: [10, 30]})")
+        return None
+    space = _mapping(raw, path, issues)
+    if space is None:
+        return None
+    try:
+        ParameterSpace(space)
+    except (TypeError, ValueError) as err:
+        issues.add(path, str(err))
+        return None
+    return dict(space)
+
+
+def _parse_draws(search: Mapping[str, Any], issues: _Issues) -> int | None:
+    if "n_draws" in search and search["n_draws"] is None:
+        return None
+    return _integer(search.get("n_draws"), "selection.search.n_draws", issues, minimum=1) or 100
+
+
+def _parse_search_backtest(
+    raw: Any, issues: _Issues
+) -> tuple[dict[str, Any], tuple[tuple[str, dict[str, Any]], ...]]:
+    path = "selection.search.backtest"
+    if raw is None:
+        return {}, ()
+    options = _mapping(raw, path, issues)
+    if options is None:
+        return {}, ()
+    issues.check_keys(options, SEARCH_BACKTEST_KEYS, path)
+    benchmarks: tuple[tuple[str, dict[str, Any]], ...] = ()
+    if options.get("benchmarks") is not None:
+        benchmarks = _parse_benchmarks(options["benchmarks"], f"{path}.benchmarks", issues)
+    kept = {
+        k: (str(v) if k in ("start", "end") else v)
+        for k, v in options.items()
+        if k in SEARCH_BACKTEST_KEYS and k != "benchmarks" and v is not None
+    }
+    return kept, benchmarks
+
+
+def _parse_robustness(raw: Any, issues: _Issues) -> dict[str, Any] | None:
+    path = "selection.search.covid_robustness"
+    if raw is None or raw is False:
+        return None
+    options = {} if raw is True else _mapping(raw, path, issues)
+    if options is None:
+        return None
+    issues.check_keys(options, ROBUSTNESS_KEYS, path)
+    out = {k: v for k, v in options.items() if k in ROBUSTNESS_KEYS}
+    if out.get("evaluate_from") is not None:
+        out["evaluate_from"] = str(out["evaluate_from"])
+    if isinstance(out.get("treatments"), list | tuple):
+        out["treatments"] = tuple(out["treatments"])
+    return out
+
+
 # ---------------------------------------------------------------------------- spec
 @dataclasses.dataclass(frozen=True)
 class NowcastSpec:
@@ -1615,6 +1791,9 @@ class NowcastSpec:
         Transformations and cleaning.
     outputs : OutputsSpec
         Requested outputs.
+    selection : SelectionSpec
+        Model-building stages run before the nowcast (``selection.preselect``,
+        ``selection.search``; see :mod:`nowcastbox.pipeline.selection`).
     snapshot_dir : pathlib.Path, optional
         Directory of versioned snapshots (none written when omitted).
     random_state : int, optional
@@ -1651,6 +1830,7 @@ class NowcastSpec:
     vintage: str = "today"
     preprocessing: PreprocessingSpec = dataclasses.field(default_factory=PreprocessingSpec)
     outputs: OutputsSpec = dataclasses.field(default_factory=OutputsSpec)
+    selection: SelectionSpec = dataclasses.field(default_factory=SelectionSpec)
     snapshot_dir: Path | None = None
     random_state: int | None = None
     base_dir: Path | None = None
@@ -1717,6 +1897,7 @@ class NowcastSpec:
         if not re.fullmatch(r"[\w.\-]+", spec_name):
             issues.add("name", f"use letters, digits, '_', '-' or '.', got {spec_name!r}")
         outputs = _parse_outputs(doc.get("outputs"), issues, base)
+        selection = _parse_selection(doc.get("selection"), issues, base)
         preprocessing = _parse_preprocessing(doc.get("preprocessing"), issues)
         random_state = _integer(doc.get("random_state"), "random_state", issues)
         _check_outputs(outputs, model, issues)
@@ -1731,6 +1912,7 @@ class NowcastSpec:
             vintage=vintage,
             preprocessing=preprocessing,
             outputs=outputs,
+            selection=selection,
             snapshot_dir=_absolute(snapshot, base),
             random_state=random_state,
             base_dir=base,
@@ -1861,6 +2043,8 @@ class NowcastSpec:
         out["preprocessing"] = self.preprocessing.to_dict()
         out["model"] = self.model.to_dict()
         out["outputs"] = self.outputs.to_dict()
+        if not self.selection.empty:
+            out["selection"] = self.selection.to_dict()
         if self.snapshot_dir is not None:
             out["snapshot_dir"] = str(self.snapshot_dir)
         if self.random_state is not None:
@@ -1979,6 +2163,8 @@ def _check_outputs(outputs: OutputsSpec, model: ModelSpec | None, issues: _Issue
         issues.add(
             "outputs.empirical_bands", "needs outputs.backtest (the bands use its past errors)"
         )
+    if model is not None and model.type == "BridgeCombination":
+        _check_bridge_outputs(outputs, issues)
     if model is None or model.type != "TwoStepDFM":
         return
     aggregate = model.options.get("aggregate", "factors")
@@ -1986,6 +2172,19 @@ def _check_outputs(outputs: OutputsSpec, model: ModelSpec | None, issues: _Issue
         issues.add(
             "outputs.news",
             "news needs a state-space model: MixedFreqDFM or TwoStepDFM(aggregate='factors')",
+        )
+
+
+def _check_bridge_outputs(outputs: OutputsSpec, issues: _Issues) -> None:
+    if outputs.news is not None:
+        issues.add(
+            "outputs.news",
+            "news needs a state-space model (BridgeCombination: use nowcast_change instead)",
+        )
+    if outputs.density is not None:
+        issues.add(
+            "outputs.density",
+            "BridgeCombination has no model-based density; use outputs.empirical_bands",
         )
 
 

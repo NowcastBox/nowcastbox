@@ -161,11 +161,15 @@ nav:
           - Robust estimation: user-guide/models/robust.md
           - Time-varying long-run mean: user-guide/models/long-run-mean.md
           - Bridge equations: user-guide/models/bridge.md
+          - Combination of bridge equations: user-guide/models/bridge-combination.md
           - Benchmarks: user-guide/models/benchmarks.md
       - Selection:
           - Number of factors: user-guide/selection/number-of-factors.md
           - Number of shocks: user-guide/selection/number-of-shocks.md
           - Targeted predictors: user-guide/selection/targeted-predictors.md
+          - Pre-selection (t-stat, SIS, LARS): user-guide/selection/preselection.md
+          - Specification search and Covid robustness: user-guide/selection/specification-search.md
+      - Building a model from scratch: user-guide/model-building.md
       - News and explainability:
           - News decomposition: user-guide/news/news-decomposition.md
           - Nowcast tracker: user-guide/news/tracker.md
@@ -203,6 +207,9 @@ nav:
       - News decomposition: theory/news.md
       - Density nowcasts and scoring: theory/density-scoring.md
       - Forecast evaluation: theory/forecast-evaluation.md
+      - Pre-selection (t-stat, SIS, LARS): theory/preselection.md
+      - Specification search and Covid robustness: theory/specification-search.md
+      - Combination of bridge equations: theory/bridge-combination.md
       - References: theory/references.md
   - Datasets:
       - datasets/index.md

@@ -38,7 +38,8 @@ random_state: 0
 | `target`, `name`, `description` | what is nowcast and the run's name (used for snapshots) |
 | `data` | `source` (dataset name, `csv`, `parquet`, `excel` or connector series), sample window, `vintage`, metadata overrides (frequencies, transforms, delays, blocks, categories) |
 | `preprocessing` | `prepare_panel` options (`enabled: false` to skip) |
-| `model` | `type` (`MixedFreqDFM` or `TwoStepDFM`), `factors` (number or per block), and any estimator option |
+| `model` | `type` (`MixedFreqDFM`, `TwoStepDFM` or `bridge_combination`), `factors` (number or per block; not for the bridge combination), and any estimator option |
+| `selection` | optional [model building](#model-building) before the nowcast: `preselect` (pre-selection of the indicators) and `search` (specification search with a Covid robustness step) |
 | `outputs` | `nowcast`, `news` (against the previous snapshot or a date), `density` (`n_boot`), `diagnostics`, `report_html`, `backtest` (with `metrics` and sub-`periods`), `empirical_bands`, `heatmap`, `alternatives`, `excel` (workbook with the results) |
 | `snapshot_dir`, `random_state` | archive location and seed |
 
@@ -172,11 +173,56 @@ run.empirical_bands.to_frame()
 run.alternatives.range()
 ```
 
+## Model building
+
+!!! note "New in 0.3.0"
+    The `selection` section and `model: {type: bridge_combination}` reproduce the
+    model-building workflow of the ECB Nowcasting Toolbox; see
+    [Building a model from scratch](model-building.md).
+
+| Key | Options | What it does |
+|---|---|---|
+| `selection.preselect` | any argument of [`preselect`](selection/preselection.md) (`methods`, `x_lags`, `weights`, `top`, `horizon`, `aggregation`...), `apply` (default `true`) | ranks the indicators at the run's vintage (`run.preselection`); with `apply: true` the model uses the selected indicators only, and the `backtest` output repeats the pre-selection on every vintage (no look-ahead) |
+| `selection.search` | `space` (required), `n_draws` (`null` = grid), `ranking`, `backtest` (`start`, `end`, `step`, `refit_every`, `n_vintages`, `benchmarks`...), `score`, `horizon_weights`, `periods`, `normalize`, `metrics`, `max_missing`, `n_jobs`, `checkpoint`, `covid_robustness` (`top`, `treatments`, `evaluate_from`), `apply` (default `false`) | runs a [specification search](selection/specification-search.md) with the spec's model as template (`run.search`, `run.robustness`); with `n_series` in `space` the funnel uses the `preselect` options, recomputed on every vintage; with `apply: true` the best specification (of the robustness step when it runs) becomes the model of the run |
+| `model.type: bridge_combination` | options of [`BridgeCombination`](models/bridge-combination.md) (`max_monthly`, `max_quarterly`, `combine`, `mse`, `trim`, `extrapolation`...) | combination of all small bridge equations; `news` and `density` are not available (use `empirical_bands` with a `backtest`) |
+
+The search runs on the vintage data before preprocessing, with the spec's publication
+delays and preprocessing applied to every pseudo real-time vintage. A failure of a
+selection stage does not stop the run: it is recorded in `run.warnings` and the spec's
+model is used. Snapshots and the Excel workbook store the `preselection`, `search` and
+`robustness` tables, and the HTML report lists them in its diagnostics section.
+`nowcastbox init --template model_building` writes a commented example.
+
+```python
+spec = {
+    "name": "model_building",
+    "target": "gdp",
+    "data": {"source": "simulated_dfm"},
+    "vintage": "2019-11-15",
+    "preprocessing": False,
+    "model": {"type": "TwoStepDFM", "factors": 1},
+    "selection": {
+        "preselect": {"methods": ["tstat", "sis"], "top": 8},
+        "search": {
+            "space": {"n_factors": [1, 2], "n_series": [4, 8]},
+            "n_draws": None,
+            "backtest": {"start": "2018-06-15", "end": "2019-06-15"},
+            "covid_robustness": {"top": 2, "treatments": ["none", "outliers"]},
+            "apply": True,
+        },
+    },
+}
+run = run_pipeline(spec)
+run.preselection.selected
+run.search.table()
+run.robustness.pivot()
+```
+
 ## Command line
 
 ```bash
 nowcastbox init nowcast_pib.yaml --template brazil_pib   # commented example spec
-nowcastbox init --list                                   # brazil_pib, connectors, csv, simulated
+nowcastbox init --list                                   # brazil_pib, connectors, csv, model_building, simulated
 nowcastbox init data.xlsx --excel                        # empty Excel data template
 nowcastbox init data.xlsx --excel --example              # filled example workbook
 nowcastbox validate nowcast_pib.yaml --check-data

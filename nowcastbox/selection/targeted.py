@@ -1,6 +1,8 @@
 r"""Targeted predictors (Bai & Ng, 2008): pre-selection of the series used by a factor model.
 
-Two rules are implemented (innovation I7 of the development plan):
+Four rankings are implemented (innovation I7 of the development plan and item 8 of the
+ECB-parity plan); :func:`nowcastbox.selection.preselect` combines them for
+mixed-frequency panels:
 
 **Hard thresholding.** For each candidate predictor ``x_i`` the regression
 
@@ -28,6 +30,15 @@ by the order in which LARS-EN activates them, predictors are ranked by the point
 path at which they first enter the active set and the first ``n_predictors`` are kept
 (or, with a fixed ``alpha``, all predictors with non-zero coefficient).
 
+**Sure independence screening** (Fan & Lv, 2008). Predictors are ranked by the absolute
+marginal correlation :math:`|\operatorname{corr}(x_i, y_{t+h})|` (pairwise complete
+observations) and the ``d`` largest are kept, by default :math:`d = \lfloor n / \log n
+\rfloor` as suggested by Fan & Lv.
+
+**Least angle regression** (Efron, Hastie, Johnstone & Tibshirani, 2004). Predictors are
+standardised and ranked by the order in which they enter the LARS path
+(:func:`nowcastbox.selection.lars_path`, optionally with the lasso modification).
+
 Timing convention
 -----------------
 Rows where the target is missing are removed **before** shifting, so ``horizon`` and
@@ -50,6 +61,12 @@ generalized linear models via coordinate descent. *Journal of Statistical Softwa
 
 Newey, W. K., & West, K. D. (1987). A simple, positive semi-definite, heteroskedasticity
 and autocorrelation consistent covariance matrix. *Econometrica*, 55(3), 703-708.
+
+Fan, J., & Lv, J. (2008). Sure independence screening for ultrahigh dimensional feature
+space. *Journal of the Royal Statistical Society B*, 70(5), 849-911.
+
+Efron, B., Hastie, T., Johnstone, I., & Tibshirani, R. (2004). Least angle regression.
+*The Annals of Statistics*, 32(2), 407-499.
 """
 
 from __future__ import annotations
@@ -64,6 +81,7 @@ import pandas as pd
 from nowcastbox._logging import get_logger
 from nowcastbox.core.data import MixedFrequencyData
 from nowcastbox.core.exceptions import ConvergenceWarning, DataQualityWarning, NowcastDataError
+from nowcastbox.selection._lars import lars_path
 
 try:  # pragma: no cover - exercised implicitly
     from numba import njit
@@ -75,8 +93,10 @@ __all__ = [
     "elastic_net",
     "elastic_net_path",
     "hard_threshold",
+    "lars_select",
     "newey_west_lags",
     "select_targeted_predictors",
+    "sis",
     "soft_threshold",
 ]
 
@@ -91,21 +111,24 @@ PredictorsLike = pd.DataFrame | np.ndarray | MixedFrequencyData
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class TargetedPredictorsResult:
-    """Outcome of :func:`hard_threshold` / :func:`soft_threshold`.
+    """Outcome of :func:`hard_threshold`, :func:`soft_threshold`, :func:`sis`, :func:`lars_select`.
 
     Attributes
     ----------
     selected : list[str]
-        Selected predictors, ordered by importance (``|t|`` for the hard rule, entry
-        order along the elastic-net path for the soft rule).
+        Selected predictors, ordered by importance (``|t|`` for the hard rule,
+        ``|corr|`` for SIS, entry order along the elastic-net or LARS path for the soft
+        and LARS rules).
     method : str
-        ``"hard"`` or ``"soft"``.
+        ``"hard"``, ``"soft"``, ``"sis"`` or ``"lars"``.
     scores : pandas.Series
-        Score of every candidate: ``|t|`` statistic (hard) or the elastic-net
-        coefficient on standardised predictors at the selected penalty (soft).
+        Score of every candidate: ``|t|`` statistic (hard), the elastic-net
+        coefficient on standardised predictors at the selected penalty (soft), the
+        absolute marginal correlation (SIS) or the LARS entry step (LARS, ``NaN`` if
+        the predictor never entered).
     ranking : pandas.Series
-        Rank of every candidate (1 = most important; soft rule: entry step on the path,
-        ``NaN`` if never active).
+        Rank of every candidate (1 = most important; soft and LARS rules: entry
+        position on the path, ``NaN`` if never active).
     horizon : int
         Forecast horizon ``h`` (in observations of the target).
     n_obs : int
@@ -181,7 +204,7 @@ class TargetedPredictorsResult:
         """
         settings = ", ".join(f"{k}={v}" for k, v in self.params.items())
         lines = [
-            f"Targeted predictors - Bai & Ng (2008), {self.method} thresholding",
+            f"Targeted predictors - {_METHOD_LABELS.get(self.method, self.method)}",
             "=" * 60,
             f"horizon: {self.horizon}   observations: {self.n_obs}   {settings}",
             f"Selected {self.n_selected} of {len(self.scores)} predictors:",
@@ -194,6 +217,14 @@ class TargetedPredictorsResult:
 
     def __str__(self) -> str:
         return self.summary()
+
+
+_METHOD_LABELS = {
+    "hard": "Bai & Ng (2008), hard thresholding",
+    "soft": "Bai & Ng (2008), soft thresholding",
+    "sis": "sure independence screening (Fan & Lv, 2008)",
+    "lars": "least angle regression (Efron et al., 2004)",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -851,13 +882,250 @@ def _soft_path_selection(
     return selected, scores, ranking, float(grid[step])
 
 
+# ---------------------------------------------------------------------------
+# Sure independence screening
+# ---------------------------------------------------------------------------
+def _default_sis_size(n_obs: int, p: int) -> int:
+    """Fan & Lv (2008) screening size ``floor(n / log n)``, capped at ``p``."""
+    return int(min(p, max(1, np.floor(n_obs / np.log(max(n_obs, 3))))))
+
+
+def _check_size(name: str, value: int | None, p: int, default: int) -> int:
+    if value is None:
+        return default
+    k = _check_nonneg_int(name, value)
+    if k < 1 or k > p:
+        raise ValueError(f"{name} must lie in [1, {p}]; got {value!r}.")
+    return k
+
+
+def _marginal_correlations(
+    preds: pd.DataFrame, lhs: np.ndarray, min_obs: int
+) -> tuple[np.ndarray, int]:
+    values = preds.to_numpy()
+    corr = np.full(values.shape[1], np.nan)
+    skipped: list[str] = []
+    n_used = 0
+    for i in range(values.shape[1]):
+        ok = ~np.isnan(values[:, i])
+        col, yy = values[ok, i], lhs[ok]
+        if col.size < max(min_obs, 3) or np.ptp(col) == 0 or np.ptp(yy) == 0:
+            skipped.append(str(preds.columns[i]))
+            continue
+        corr[i] = np.corrcoef(col, yy)[0, 1]
+        n_used = max(n_used, col.size)
+    if skipped:
+        warnings.warn(
+            f"{len(skipped)} predictors skipped (constant or too few observations): {skipped}.",
+            DataQualityWarning,
+            stacklevel=3,
+        )
+    if n_used == 0:
+        raise NowcastDataError("No predictor has enough observations for the correlation.")
+    return corr, n_used
+
+
+def sis(
+    x: PredictorsLike,
+    y: TargetLike,
+    *,
+    horizon: int = 0,
+    n_predictors: int | None = None,
+    min_obs: int = 10,
+) -> TargetedPredictorsResult:
+    r"""Sure independence screening by marginal correlation (Fan & Lv, 2008).
+
+    Every candidate is ranked by :math:`|\operatorname{corr}(x_{it}, y_{t+h})|`,
+    computed on the observations where both are available, and the ``n_predictors``
+    largest are kept.
+
+    Parameters
+    ----------
+    x : DataFrame, ndarray or MixedFrequencyData
+        Candidate predictors (rows = periods).
+    y : Series, ndarray or str
+        Target aligned with ``x`` (or a column name of ``x``).
+    horizon : int, default 0
+        Forecast horizon ``h`` in observations of the target.
+    n_predictors : int, optional
+        Screening size ``d``; default :math:`\lfloor n/\log n \rfloor` (Fan & Lv,
+        2008), capped at the number of candidates.
+    min_obs : int, default 10
+        Minimum number of pairwise complete observations; predictors with fewer (or
+        constant ones) get ``NaN`` with a :class:`DataQualityWarning`.
+
+    Returns
+    -------
+    TargetedPredictorsResult
+        ``scores`` holds the absolute correlations, ``ranking`` their rank.
+
+    Raises
+    ------
+    ValueError
+        Invalid ``n_predictors`` or ``horizon``.
+    NowcastDataError
+        Invalid or insufficient data.
+
+    Examples
+    --------
+    >>> import numpy as np, pandas as pd
+    >>> rng = np.random.default_rng(0)
+    >>> x = pd.DataFrame(rng.normal(size=(200, 4)), columns=list("abcd"))
+    >>> y = x["d"] - 0.5 * x["b"] + rng.normal(scale=0.5, size=200)
+    >>> sis(x, y, n_predictors=2).selected
+    ['d', 'b']
+    """
+    horizon = _check_nonneg_int("horizon", horizon)
+    preds, lhs, _ = _align(x, y, horizon, 0)
+    names = [str(c) for c in preds.columns]
+    corr, n_used = _marginal_correlations(preds, lhs, min_obs)
+    scores = pd.Series(np.abs(corr), index=names, name="abs_corr")
+    k = _check_size("n_predictors", n_predictors, len(names), _default_sis_size(n_used, len(names)))
+    order = scores.dropna().sort_values(ascending=False, kind="mergesort")
+    ranking = scores.rank(ascending=False, method="first").rename("rank")
+    return TargetedPredictorsResult(
+        selected=[str(c) for c in order.index[:k]],
+        method="sis",
+        scores=scores,
+        ranking=ranking,
+        horizon=horizon,
+        n_obs=n_used,
+        params={"n_predictors": k},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Least angle regression
+# ---------------------------------------------------------------------------
+def _standardized_design(
+    preds: pd.DataFrame, lhs: np.ndarray, missing: str
+) -> tuple[list[str], np.ndarray, np.ndarray]:
+    """Standardise the predictors (``ddof=0``); drop or mean-impute missing values."""
+    if missing == "drop":
+        preds, lhs = _complete_rows(preds, lhs)
+    values = preds.to_numpy(dtype=float)
+    counts = (~np.isnan(values)).sum(axis=0)
+    filled = np.where(counts[None, :] > 0, values, 0.0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        mean = np.where(counts > 0, np.nanmean(filled, axis=0), 0.0)
+        std = np.where(counts > 1, np.nanstd(filled, axis=0), 0.0)
+    keep = std > 0
+    names = [str(c) for c, k in zip(preds.columns, keep, strict=True) if k]
+    if not keep.all():
+        dropped = [str(c) for c, k in zip(preds.columns, keep, strict=True) if not k]
+        warnings.warn(
+            f"{len(dropped)} predictors excluded from LARS (constant or empty): {dropped}.",
+            DataQualityWarning,
+            stacklevel=4,
+        )
+    if not names:
+        raise NowcastDataError("No predictor with variation for LARS.")
+    z = (values[:, keep] - mean[keep]) / std[keep]
+    n_missing = int(np.isnan(z).sum())
+    if n_missing:
+        warnings.warn(
+            f"{n_missing} missing predictor values replaced by the mean for LARS.",
+            DataQualityWarning,
+            stacklevel=4,
+        )
+    return names, np.nan_to_num(z, nan=0.0), lhs - lhs.mean()
+
+
+def lars_select(
+    x: PredictorsLike,
+    y: TargetLike,
+    *,
+    horizon: int = 0,
+    n_predictors: int | None = None,
+    method: Literal["lar", "lasso"] = "lar",
+    missing: Literal["drop", "mean"] = "drop",
+) -> TargetedPredictorsResult:
+    """Rank predictors by their order of entry on the LARS path (Efron et al., 2004).
+
+    Predictors are standardised (``ddof=0``) and the target is centred (intercept), then
+    the least angle regression path is computed with
+    :func:`~nowcastbox.selection.lars_path`. The first ``n_predictors`` series to enter
+    are kept. With ``method="lasso"`` a series dropped by the lasso modification keeps
+    the position of its first entry.
+
+    Parameters
+    ----------
+    x : DataFrame, ndarray or MixedFrequencyData
+        Candidate predictors (rows = periods).
+    y : Series, ndarray or str
+        Target aligned with ``x`` (or a column name of ``x``).
+    horizon : int, default 0
+        Forecast horizon ``h`` in observations of the target.
+    n_predictors : int, optional
+        Number of predictors to keep (default ``min(30, N)``, as in Bai & Ng, 2008).
+    method : {"lar", "lasso"}, default "lar"
+        Plain LARS or the lasso modification.
+    missing : {"drop", "mean"}, default "drop"
+        Drop observations with any missing predictor, or replace missing standardised
+        values by zero (the mean), which keeps unbalanced panels usable.
+
+    Returns
+    -------
+    TargetedPredictorsResult
+        ``scores`` holds the entry step (``NaN`` if never active), ``ranking`` the
+        entry position.
+
+    Raises
+    ------
+    ValueError
+        Invalid tuning parameters.
+    NowcastDataError
+        Invalid or insufficient data.
+
+    Examples
+    --------
+    >>> import numpy as np, pandas as pd
+    >>> rng = np.random.default_rng(0)
+    >>> x = pd.DataFrame(rng.normal(size=(200, 5)), columns=list("abcde"))
+    >>> y = 2 * x["c"] + x["a"] + rng.normal(scale=0.5, size=200)
+    >>> lars_select(x, y, n_predictors=2).selected
+    ['c', 'a']
+    """
+    horizon = _check_nonneg_int("horizon", horizon)
+    if missing not in ("drop", "mean"):
+        raise ValueError(f"missing must be 'drop' or 'mean'; got {missing!r}.")
+    preds, lhs, _ = _align(x, y, horizon, 0)
+    all_names = [str(c) for c in preds.columns]
+    k = _check_size("n_predictors", n_predictors, len(all_names), min(30, len(all_names)))
+    names, z, yc = _standardized_design(preds, lhs, missing)
+    path = lars_path(z, yc, method=method)
+    steps = pd.Series(np.nan, index=all_names, name="entry_step")
+    steps[names] = path.entry_step
+    ranking = steps.rank(method="first").rename("rank")
+    selected = [names[j] for j in path.entry_order[:k]]
+    if len(selected) < k:
+        warnings.warn(
+            f"Only {len(selected)} predictors entered the LARS path (requested {k}).",
+            DataQualityWarning,
+            stacklevel=2,
+        )
+    return TargetedPredictorsResult(
+        selected=selected,
+        method="lars",
+        scores=steps,
+        ranking=ranking,
+        horizon=horizon,
+        n_obs=len(yc),
+        params={"method": method, "missing": missing, "n_steps": path.n_steps},
+    )
+
+
 def select_targeted_predictors(
     x: PredictorsLike,
     y: TargetLike,
-    method: Literal["hard", "soft"] = "hard",
+    method: Literal["hard", "soft", "sis", "lars"] = "hard",
     **kwargs: Any,
 ) -> TargetedPredictorsResult:
-    """Dispatch to :func:`hard_threshold` or :func:`soft_threshold`.
+    """Dispatch to one of the targeted-predictor rules.
+
+    The rules are :func:`hard_threshold`, :func:`soft_threshold`, :func:`sis` and
+    :func:`lars_select`.
 
     Parameters
     ----------
@@ -865,8 +1133,8 @@ def select_targeted_predictors(
         Candidate predictors.
     y : Series, ndarray or str
         Target (or a column name of ``x``).
-    method : {"hard", "soft"}, default "hard"
-        Thresholding rule.
+    method : {"hard", "soft", "sis", "lars"}, default "hard"
+        Selection rule.
     **kwargs
         Keyword arguments of the chosen rule.
 
@@ -893,4 +1161,8 @@ def select_targeted_predictors(
         return hard_threshold(x, y, **kwargs)
     if method == "soft":
         return soft_threshold(x, y, **kwargs)
-    raise ValueError(f"method must be 'hard' or 'soft'; got {method!r}.")
+    if method == "sis":
+        return sis(x, y, **kwargs)
+    if method == "lars":
+        return lars_select(x, y, **kwargs)
+    raise ValueError(f"method must be 'hard', 'soft', 'sis' or 'lars'; got {method!r}.")

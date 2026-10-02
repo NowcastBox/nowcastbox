@@ -56,4 +56,6 @@ nb.BridgeEquation().fit(ds.data, formula).get_nowcast()
 ```
 
 As a benchmark in backtests use `nb.benchmarks.BridgeBenchmark` (same estimator behind
-the benchmark interface; see [Benchmarks](benchmarks.md)).
+the benchmark interface; see [Benchmarks](benchmarks.md)). To avoid picking the
+indicators at all, [combine all small bridge equations](bridge-combination.md)
+(`nb.BridgeCombination`, Bańbura et al., 2023).

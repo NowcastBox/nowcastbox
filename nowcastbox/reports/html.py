@@ -157,6 +157,25 @@ def _flat_index(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _selection_table(item: Any) -> dict[str, Any]:
+    """Table of a pre-selection, specification search or Covid robustness result."""
+    name = type(item).__name__
+    if name == "PreselectionResult":
+        frame = item.table().head(item.n_selected)
+        caption = f"Pre-selected indicators ({item.n_selected})"
+    elif name == "CovidRobustness":
+        frame = item.pivot()  # noqa: PD010 - CovidRobustness.pivot, not pandas
+        caption = "Covid robustness: score by specification and treatment"
+    elif name == "SearchResults":
+        frame, caption = item.table(top=10), "Specification search: best specifications"
+    else:
+        raise TypeError(
+            "selection items must be PreselectionResult, SearchResults or CovidRobustness; "
+            f"got {name}."
+        )
+    return _table(_flat_index(frame), caption)
+
+
 class NowcastReport:
     """HTML report of a nowcast.
 
@@ -205,6 +224,12 @@ class NowcastReport:
         the results' data (target excluded).
     heatmap_last : int, default 24
         Number of most recent periods in the heatmap.
+    selection : sequence, optional
+        Model-building results shown as tables in the diagnostics section: a
+        :class:`~nowcastbox.selection.PreselectionResult` (the selected series),
+        :class:`~nowcastbox.selection.SearchResults` (the ten best specifications) and
+        :class:`~nowcastbox.selection.CovidRobustness` (score by specification and
+        treatment), in any order.
     released_share : bool, default True
         Show the share of the nowcast period's predictor data already released (by
         category) in the data-flow section.
@@ -264,6 +289,7 @@ class NowcastReport:
         alternatives: Any = None,
         heatmap: Any = None,
         heatmap_last: int = 24,
+        selection: Sequence[Any] = (),
         released_share: bool = True,
         diagnostics: Any = None,
         author: str | None = None,
@@ -295,6 +321,7 @@ class NowcastReport:
         self.alternatives = alternatives
         self.heatmap = heatmap
         self.heatmap_last = heatmap_last
+        self.selection = list(selection)
         self.released_share = released_share
         self.diagnostics = diagnostics
         self.author = author
@@ -574,6 +601,7 @@ class NowcastReport:
                 sec["placeholders"].append(f"Backtest table not available: {exc}")
         if self.backtest_metrics is not None:
             sec["tables"].append(_table(_flat_index(self.backtest_metrics), "Backtest accuracy"))
+        sec["tables"] += [_selection_table(item) for item in self.selection]
         self._collect(items, sec)
         sec["pre"] = res.summary()
         self._dfm_diagnostics(sec)

@@ -5,8 +5,11 @@
 1. load the data (built-in dataset, file or connectors) and keep the information set
    of the spec's ``vintage`` (pseudo real-time release rule);
 2. preprocess (:func:`~nowcastbox.preprocessing.prepare_panel`);
-3. estimate the model through :func:`nowcastbox.nowcast` (Bai & Ng, 2002 selection
-   when ``factors: auto``);
+3. optionally pre-select the indicators (``selection.preselect``), estimate the model
+   through :func:`nowcastbox.nowcast` (Bai & Ng, 2002 selection when
+   ``factors: auto``; :class:`~nowcastbox.models.BridgeCombination` with
+   ``model.type: bridge_combination``) and optionally search its specification in
+   pseudo real time, with the Covid robustness step (``selection.search``);
 4. produce the requested outputs: density nowcast (I5), news decomposition against the
    previous snapshot or an earlier vintage (Bańbura & Modugno, 2014; I6), DFM
    diagnostics (I9), pseudo real-time backtest (accuracy by horizon and sub-period,
@@ -36,6 +39,12 @@ from nowcastbox.core.data import MixedFrequencyData
 from nowcastbox.core.exceptions import NowcastDataError
 from nowcastbox.core.results import NowcastResults
 from nowcastbox.pipeline.data import apply_vintage, data_hash, load_data, preprocess
+from nowcastbox.pipeline.selection import (
+    best_model,
+    funnel_model,
+    run_preselection,
+    run_search,
+)
 from nowcastbox.pipeline.snapshots import Snapshot, SnapshotStore, headline_period, jsonable
 from nowcastbox.pipeline.spec import (
     AlternativesOutput,
@@ -100,6 +109,12 @@ class PipelineRun:
         Z-scores of the indicators (``heatmap`` output).
     alternatives : AlternativeNowcasts, optional
         Nowcasts of the alternative models (``alternatives`` output).
+    preselection : PreselectionResult, optional
+        Pre-selection of the indicators (``selection.preselect``).
+    search : SearchResults, optional
+        Specification search (``selection.search``).
+    robustness : CovidRobustness, optional
+        Covid robustness step of the search (``selection.search.covid_robustness``).
     report_html : str, optional
         HTML report (``report_html`` output).
     report_path : pathlib.Path, optional
@@ -148,6 +163,9 @@ class PipelineRun:
     empirical_bands: Any = None
     heatmap: Any = None
     alternatives: Any = None
+    preselection: Any = None
+    search: Any = None
+    robustness: Any = None
     report_html: str | None = None
     report_path: Path | None = None
     excel_paths: tuple[Path, ...] = ()
@@ -212,12 +230,35 @@ class PipelineRun:
         return "\n".join(lines)
 
     def _phase_lines(self) -> list[str]:
-        """Summary lines of the empirical bands, heatmap and alternative models."""
-        lines = [*self._empirical_band_line(), *self._alternatives_line()]
+        """Summary lines of the selection stages, bands, heatmap and alternative models."""
+        lines = [
+            *self._selection_lines(),
+            *self._empirical_band_line(),
+            *self._alternatives_line(),
+        ]
         if self.heatmap is not None:
             lines.append(f"  heatmap     : z-scores of {len(self.heatmap.series)} indicators")
         if self.excel_paths:
             lines.append(f"  excel       : {', '.join(str(p) for p in self.excel_paths)}")
+        return lines
+
+    def _selection_lines(self) -> list[str]:
+        lines = []
+        if self.preselection is not None:
+            names = ", ".join(self.preselection.selected[:5])
+            more = "..." if self.preselection.n_selected > 5 else ""
+            lines.append(
+                f"  preselect   : {self.preselection.n_selected} indicators ({names}{more})"
+            )
+        if self.search is not None:
+            best = self.search.table(top=1)
+            lines.append(
+                f"  search      : {len(self.search.evaluations)} specifications, best score "
+                f"{_fmt(best['score'].iloc[0]) if len(best) else 'n/a'}"
+            )
+        if self.robustness is not None:
+            best = self.robustness.best()
+            lines.append(f"  robustness  : best treatment {best['treatment']!r}")
         return lines
 
     def _empirical_band_line(self) -> list[str]:
@@ -330,6 +371,8 @@ def _fmt(value: Any) -> str:
 
 
 def _model_line(results: NowcastResults) -> str:
+    if "n_factors" not in results.model_params and "n_equations" in results.info:
+        return f"equations={results.info['n_equations']}"  # BridgeCombination
     parts = [f"factors={results.model_params.get('n_factors')}"]
     if results.n_iter is not None:
         parts.append(f"iterations={results.n_iter}")
@@ -387,6 +430,10 @@ class _State:
     bands: Any = None
     zscores: Any = None
     alternatives: Any = None
+    preselection: Any = None
+    search: Any = None
+    robustness: Any = None
+    estimator: Any = None
     report_html: str | None = None
     report_path: Path | None = None
 
@@ -505,6 +552,9 @@ def run_pipeline(
         empirical_bands=state.bands,
         heatmap=state.zscores,
         alternatives=state.alternatives,
+        preselection=state.preselection,
+        search=state.search,
+        robustness=state.robustness,
         report_html=state.report_html,
         report_path=state.report_path,
         snapshot=snap,
@@ -561,15 +611,76 @@ def _estimate(spec: NowcastSpec, timer: _Timer, today: pd.Timestamp | None) -> _
         data = apply_vintage(loaded, vintage, explicit=spec.vintage != "today")
     with timer.stage("preprocessing"):
         panel = preprocess(data, spec)
+    notes: list[str] = []
+    preselection = None
+    if spec.selection.preselect is not None:
+        with timer.stage("preselect"):
+            preselection = _preselect(spec, panel, notes)
+    fit_panel = panel
+    if preselection is not None and spec.selection.preselect.apply:  # type: ignore[union-attr]
+        fit_panel = preselection.transform(panel)
     with timer.stage("estimation"):
-        results = _fit(spec, panel)
-    return _State(spec, vintage, loaded, data, panel, results, notes=[])
+        results = _fit(spec, fit_panel)
+    state = _State(spec, vintage, loaded, data, panel, results, notes=notes)
+    state.preselection = preselection
+    if fit_panel is not panel and preselection is not None:
+        state.estimator = funnel_model(spec, _unfitted(spec, results), preselection)
+    if spec.selection.search is not None:
+        with timer.stage("search"):
+            _search(state)
+    return state
+
+
+def _preselect(spec: NowcastSpec, panel: MixedFrequencyData, notes: list[str]) -> Any:
+    """Pre-selection stage; a failure keeps every indicator and is recorded."""
+    try:
+        return run_preselection(spec, panel)
+    except (ValueError, TypeError, KeyError) as err:  # NowcastDataError is a ValueError
+        notes.append(f"preselect skipped (all indicators kept): {type(err).__name__}: {err}")
+        return None
+
+
+def _unfitted(spec: NowcastSpec, results: NowcastResults, **overrides: Any) -> Any:
+    """Unfitted estimator of the spec with the fitted results' parameters."""
+    return spec.model.estimator_class(**{**results.model_params, **overrides})
+
+
+def _fit_kwargs(spec: NowcastSpec) -> dict[str, Any] | None:
+    return {"horizon": spec.model.horizon} if spec.model.method == "em" else None
+
+
+def _spec_preprocess(spec: NowcastSpec) -> Callable[[MixedFrequencyData], MixedFrequencyData]:
+    return lambda vintage: preprocess(vintage, spec)
+
+
+def _search(state: _State) -> None:
+    """Specification search stage; with ``apply`` the best model replaces the spec's."""
+    spec = state.spec
+    stage = spec.selection.search
+    try:
+        state.search, state.robustness = run_search(
+            spec,
+            state.data,
+            _unfitted(spec, state.results),
+            _spec_preprocess(spec),
+            _fit_kwargs(spec),
+        )
+        if stage is None or not stage.apply:
+            return
+        model = best_model(state.search, state.robustness)
+        state.results = model.fit(state.data, spec.target_name, **(_fit_kwargs(spec) or {}))
+        state.estimator = model
+    except Exception as err:  # the search never aborts the production nowcast
+        state.notes.append(f"search skipped: {type(err).__name__}: {err}")
 
 
 def _fit(spec: NowcastSpec, panel: MixedFrequencyData) -> NowcastResults:
     from nowcastbox.api import nowcast
 
     model = spec.model
+    if model.method == "bridge_combination":
+        estimator = model.estimator_class(horizon=model.horizon, **model.options)
+        return estimator.fit(panel, spec.target)
     return nowcast(
         panel,
         target=spec.target,
@@ -693,8 +804,7 @@ def _backtest(state: _State, options: BacktestOutput) -> None:
     from nowcastbox import benchmarks as bench_module
     from nowcastbox.evaluation import PseudoRealTimeBacktest
 
-    params = {**state.results.model_params, **options.model}
-    model = state.spec.model.estimator_class(**params)
+    model, vintage_preprocess = _backtest_model(state, options)
     benches = [getattr(bench_module, name)(**kwargs) for name, kwargs in options.benchmarks]
     # Backtest on the uncleaned vintage data and re-run the spec's preprocessing on
     # each vintage, so outlier rules and gap filling never see future observations.
@@ -703,7 +813,6 @@ def _backtest(state: _State, options: BacktestOutput) -> None:
         raise SpecError(
             [("outputs.backtest", "the backtest needs publication delays for every series")]
         )
-    fit_kwargs = {"horizon": state.spec.model.horizon} if state.spec.model.method == "em" else None
     backtest = PseudoRealTimeBacktest(
         model=model,
         data=state.data,
@@ -717,13 +826,29 @@ def _backtest(state: _State, options: BacktestOutput) -> None:
         window_length=options.window_length,
         refit_every=options.refit_every,
         target_offsets=options.target_offsets,
-        fit_kwargs=fit_kwargs,
-        preprocess=lambda vintage: preprocess(vintage, state.spec),
+        fit_kwargs=_fit_kwargs(state.spec),
+        preprocess=vintage_preprocess,
     )
     state.backtest = backtest.run()
     state.backtest_metrics = state.backtest.metrics(
         metrics=options.metrics, periods=options.periods
     )
+
+
+def _backtest_model(state: _State, options: BacktestOutput) -> tuple[Any, Any]:
+    """Model of the backtest output and the preprocessing of each vintage.
+
+    Without a selection stage it is the spec's estimator with the fitted parameters.
+    After ``selection.preselect`` (applied) it repeats the pre-selection on every
+    vintage; after ``selection.search`` (applied) it is the best specification, which
+    already carries the spec's preprocessing.
+    """
+    if state.estimator is None:
+        return _unfitted(state.spec, state.results, **options.model), _spec_preprocess(state.spec)
+    model = state.estimator.clone()
+    model.set_params(params={**(model.params or {}), **options.model})
+    vintage_preprocess = None if model.preprocess is not None else _spec_preprocess(state.spec)
+    return model, vintage_preprocess
 
 
 def _empirical_bands(state: _State, options: EmpiricalBandsOutput) -> None:
@@ -767,7 +892,6 @@ def _alternatives(state: _State, options: AlternativesOutput) -> None:
         model: Any = state.spec.model.estimator_class(**state.results.model_params)
     else:
         model = state.results
-    fit_kwargs = {"horizon": state.spec.model.horizon} if state.spec.model.method == "em" else None
     state.alternatives = alternative_models(
         model,
         data,
@@ -775,7 +899,7 @@ def _alternatives(state: _State, options: AlternativesOutput) -> None:
         by=options.by,
         drop=options.drop,
         refit=options.refit,
-        fit_kwargs=fit_kwargs,
+        fit_kwargs=_fit_kwargs(state.spec),
     )
 
 
@@ -794,6 +918,9 @@ def _report(state: _State, options: ReportOutput) -> None:
         alternatives=state.alternatives,
         heatmap=state.zscores,
         heatmap_last=24 if heatmap is None else heatmap.last,
+        selection=[
+            x for x in (state.preselection, state.search, state.robustness) if x is not None
+        ],
         diagnostics=state.diagnostics if state.diagnostics is not None else False,
         author=options.author,
         notes=options.notes,
@@ -869,6 +996,37 @@ def _phase_tables(state: _State) -> dict[str, pd.DataFrame]:
     if state.alternatives is not None:
         tables["alternatives"] = state.alternatives.table()
         tables["alternatives_range"] = state.alternatives.range()
+    tables.update(selection_tables(state))
+    return tables
+
+
+def selection_tables(run: Any) -> dict[str, pd.DataFrame]:
+    """Tables of the selection stages of a run (snapshot and Excel workbook).
+
+    Parameters
+    ----------
+    run : PipelineRun
+        Run (any object with ``preselection``, ``search`` and ``robustness``).
+
+    Returns
+    -------
+    dict of str to pandas.DataFrame
+        ``preselection`` (series table), ``search`` (one row per specification) and
+        ``robustness`` (one row per specification and Covid treatment), as available.
+
+    Examples
+    --------
+    >>> from types import SimpleNamespace
+    >>> selection_tables(SimpleNamespace(preselection=None, search=None, robustness=None))
+    {}
+    """
+    tables: dict[str, pd.DataFrame] = {}
+    if getattr(run, "preselection", None) is not None:
+        tables["preselection"] = run.preselection.table()
+    if getattr(run, "search", None) is not None:
+        tables["search"] = run.search.table()
+    if getattr(run, "robustness", None) is not None:
+        tables["robustness"] = run.robustness.table()
     return tables
 
 

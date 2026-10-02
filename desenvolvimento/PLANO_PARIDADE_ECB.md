@@ -6,7 +6,7 @@
 | Versão de partida | `nowcastbox` 0.1.2 (PyPI, DOI 10.5281/zenodo.23102804) |
 | Versões-alvo | 0.2.0 (Fase 1), 0.3.0 (Fase 2), 0.4.0 (Fase 3) |
 | Data do documento | 2026-10-02 |
-| Status | **Fase 1 concluída** (integrada na branch `ecb-parity`, 2026-10-02; release 0.2.0 ainda não publicado); Fases 2–3 em planejamento |
+| Status | **Fases 1 e 2 concluídas** (integradas na branch `ecb-parity`, 2026-10-02; releases 0.2.0/0.3.0 ainda não publicados); Fase 3 em planejamento |
 
 ---
 
@@ -41,9 +41,9 @@ passo de integração de cada fase.
 | 5 | Parcela dos dados já divulgados | 1 | S | `core/data.py`, `visualization/data_flow.py`, `news/tracker.py` | **Concluído** |
 | 6 | Nowcasts de modelos alternativos (sem 1–2 grupos) | 1 | S–M | `experiment/alternatives.py` (novo) | **Concluído** |
 | 7 | Templates Excel | 1 | S | `pipeline/data.py`, `pipeline/spec.py`, `pipeline/templates/example.xlsx`, `cli/main.py` | **Concluído** |
-| 8 | Pré-seleção completa (SIS, LARS, score agregado) | 2 | M | `selection/targeted.py`, `selection/preselection.py` (novo) | Planejado |
-| 9 | Busca aleatória de especificações + robustez à Covid | 2 | M | `selection/search.py` (novo), `experiment/` | Planejado |
-| 10 | Combinação de bridge equations | 2 | M | `models/bridge_combination.py` (novo), `benchmarks/` | Planejado |
+| 8 | Pré-seleção completa (SIS, LARS, score agregado) | 2 | M | `selection/targeted.py`, `selection/preselection.py` (novo) | **Concluído** |
+| 9 | Busca aleatória de especificações + robustez à Covid | 2 | M | `selection/search.py` (novo), `experiment/` | **Concluído** |
+| 10 | Combinação de bridge equations | 2 | M | `models/bridge_combination.py` (novo), `benchmarks/` | **Concluído** |
 | 11 | BVAR grande (Cimadomo et al. 2022) | 3 | L | `models/bvar.py` (novo), `models/_bvar_prior.py` (novo) | Planejado |
 
 Esforço: S ≈ até 1 dia, M ≈ 2–5 dias, L ≈ 2–3 semanas (inclui testes, docs e validação).
@@ -325,6 +325,26 @@ iguala `BridgeEquation`; pesos inverse-MSE somam 1; desempenho com N_m = 50 (≈
 equações) abaixo de um limite.
 
 ### Integração da Fase 2
+
+> **Situação (2026-10-02): concluída**, exceto o paper JSS e o release 0.3.0.
+> Feito: `nb.preselect`, `nb.PreselectionResult`, `nb.SpecificationSearch`,
+> `nb.SearchResults`, `nb.CovidRobustness`, `nb.SpecifiedModel`, `nb.BridgeCombination`,
+> `nb.BridgeCombinationResults` no topo; pipeline YAML com a seção `selection`
+> (`selection.preselect` — aplicada ao modelo e refeita por vintage no backtest —,
+> `selection.search` com `covid_robustness` e `apply`) e `model.type:
+> bridge_combination` (módulo novo `pipeline/selection.py`; template `model_building`
+> para `nowcastbox init`); tabelas `preselection`/`search`/`robustness` no snapshot, no
+> Excel e no relatório HTML (`NowcastReport(selection=...)`); guia "Building a model from
+> scratch" (`docs/user-guide/model-building.md`), páginas de teoria/guia dos itens 8–10,
+> nav do MkDocs, referências; `CHANGELOG`, `FONTES`, `CONTRATOS`. Consistência: o argumento
+> `evaluate_periods` da busca passou a `periods` (como em `BacktestResults`). Pendentes:
+> tabela de paridade com o ECB no paper JSS e o release 0.3.0.
+>
+> Gancho da Fase 3: `models/bvar.py` deve chamar `register_extrapolator("bvar", factory)`
+> (a fábrica recebe `**extrapolation_options` e devolve `(data, columns, end) -> dict`
+> de séries na grade nativa até `end`; ver `extrapolation.native_until`), levantar
+> `NowcastDataError` quando não puder ajustar (permite o recuo série a série) e ser
+> importado em `models/__init__.py`.
 
 Pipeline YAML (`selection.preselect`, `selection.search`, `model: bridge_combination`), docs
 (guia "Construindo um modelo do zero" no fluxo do ECB: pré-seleção → busca → robustez),

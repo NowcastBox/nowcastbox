@@ -23,6 +23,11 @@ ECB-toolbox parity (0.2.0): ``nb.empirical_bands`` (Reifschneider-Tulip error ba
 one or two groups of indicators), ``nb.pesaran_timmermann`` (directional accuracy test),
 ``MixedFrequencyData.released_share`` and ``BacktestResults.metrics(..., periods=...)``.
 
+ECB-toolbox parity (0.3.0, model building): ``nb.preselect`` (t-stat, SIS and LARS
+rankings of the indicators), ``nb.SpecificationSearch`` (random or grid search of
+specifications scored in pseudo real time, with a Covid robustness step) and
+``nb.BridgeCombination`` (combination of all small bridge equations).
+
 Examples
 --------
 >>> import nowcastbox as nb
@@ -101,6 +106,8 @@ from nowcastbox.evaluation import (
 )
 from nowcastbox.experiment import AlternativeNowcasts, NowcastExperiment, alternative_models
 from nowcastbox.models import (
+    BridgeCombination,
+    BridgeCombinationResults,
     BridgeEquation,
     BridgeResults,
     MixedFreqDFM,
@@ -136,11 +143,17 @@ from nowcastbox.preprocessing import (
 )
 from nowcastbox.reports import NowcastReport
 from nowcastbox.selection import (
+    CovidRobustness,
     FactorSelectionResult,
+    PreselectionResult,
+    SearchResults,
     SelectionPath,
     ShockSelectionResult,
+    SpecificationSearch,
+    SpecifiedModel,
     ValidationSettings,
     hard_threshold,
+    preselect,
     select_blocks,
     select_factors,
     select_shocks,
@@ -169,11 +182,14 @@ __all__ = [
     "BacktestResults",
     "BaseBenchmark",
     "BaseNowcaster",
+    "BridgeCombination",
+    "BridgeCombinationResults",
     "BridgeEquation",
     "BridgeResults",
     "CalendarAggregation",
     "Compose",
     "ConvergenceWarning",
+    "CovidRobustness",
     "DataQualityWarning",
     "Dataset",
     "DiagnosticsReport",
@@ -201,14 +217,18 @@ __all__ = [
     "NowcastTracker",
     "PctChange",
     "PipelineRun",
+    "PreselectionResult",
     "PseudoRealTimeBacktest",
     "ReleaseCalendar",
     "Scale",
+    "SearchResults",
     "SelectionPath",
     "SeriesCategory",
     "SeriesMetadata",
     "ShockSelectionResult",
     "SnapshotStore",
+    "SpecificationSearch",
+    "SpecifiedModel",
     "StateSpace",
     "TemporalAggregation",
     "Transform",
@@ -261,6 +281,7 @@ __all__ = [
     "pipeline",
     "prepare_panel",
     "preprocessing",
+    "preselect",
     "pseudo_real_time",
     "quarter_to_month",
     "reports",

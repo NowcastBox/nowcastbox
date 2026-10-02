@@ -11,11 +11,18 @@ import pytest
 matplotlib.use("Agg")
 
 MODULES = [
+    "nowcastbox.selection._lars",
     "nowcastbox.selection._panel",
     "nowcastbox.selection._plot",
+    "nowcastbox.selection._search_checkpoint",
+    "nowcastbox.selection._search_space",
+    "nowcastbox.selection._search_treatments",
+    "nowcastbox.selection._specified",
     "nowcastbox.selection.bai_ng_factors",
     "nowcastbox.selection.bai_ng_shocks",
     "nowcastbox.selection.blocks",
+    "nowcastbox.selection.preselection",
+    "nowcastbox.selection.search",
     "nowcastbox.selection.targeted",
 ]
 

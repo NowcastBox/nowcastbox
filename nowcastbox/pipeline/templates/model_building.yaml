@@ -1,0 +1,43 @@
+# nowcastbox pipeline spec: build a model from scratch as in the ECB Nowcasting Toolbox
+# (Linzenich & Meunier, 2024): pre-select the indicators, search the specification in
+# pseudo real time, check its robustness to the Covid treatments, then nowcast with the
+# best specification. Small and fast on the simulated dataset.
+# Run with: nowcastbox run model_building.yaml
+name: model_building
+target: gdp
+
+data:
+  source: simulated_dfm
+  vintage: 2019-11-15           # pseudo real-time vintage (publication delays of the dataset)
+
+preprocessing:
+  enabled: false                # the simulated series are already stationary
+
+model:
+  type: TwoStepDFM              # template of the search (MixedFreqDFM works too)
+  factors: 1
+
+selection:
+  preselect:                    # t-stat, SIS and LARS rankings at the vintage
+    methods: [tstat, sis, lars]
+    x_lags: [0, 1]              # each indicator also enters with one quarter of lag
+    top: 10
+  search:
+    space:                      # searched settings
+      n_factors: [1, 2]
+      n_series: [4, 10]         # funnel: top-k of the pre-selection, re-ranked per vintage
+      start: [2000-01, 2006-01]
+    n_draws: 6                  # null evaluates the whole grid
+    backtest: {start: 2018-01-15, end: 2019-06-15}
+    score: {rmsfe: 0.7, fda: 0.3}
+    horizon_weights: {backcast: 0.25, nowcast: 0.5, forecast: 0.25}
+    covid_robustness: {top: 2, treatments: [none, outliers]}
+    apply: true                 # nowcast with the best specification
+
+outputs:
+  nowcast: true
+  backtest: {start: 2019-01-15, end: 2019-10-15, metrics: [rmsfe, fda, n]}
+  report_html: {plotlyjs: cdn}
+
+snapshot_dir: ./snapshots
+random_state: 0

@@ -423,6 +423,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     brazil_pib
     connectors
     csv
+    model_building
     simulated
     0
     """

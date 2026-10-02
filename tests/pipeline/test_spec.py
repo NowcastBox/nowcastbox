@@ -667,8 +667,14 @@ def test_load_spec_forms(tmp_path):
 
 
 def test_templates_parse():
-    assert set(list_templates()) == {"brazil_pib", "connectors", "csv", "simulated"}
-    for name in ("brazil_pib", "connectors", "simulated"):
+    assert set(list_templates()) == {
+        "brazil_pib",
+        "connectors",
+        "csv",
+        "model_building",
+        "simulated",
+    }
+    for name in ("brazil_pib", "connectors", "model_building", "simulated"):
         spec = NowcastSpec.from_yaml(template_path(name))
         assert spec.name == name.replace("connectors", "brazil_live")
     with pytest.raises(SpecError, match="file not found"):

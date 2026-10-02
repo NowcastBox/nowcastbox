@@ -749,8 +749,8 @@ def write_run_excel(run: Any, path: str | Path) -> Path:
         Run of :func:`~nowcastbox.pipeline.run_pipeline` (any object with the same
         attributes works: ``results`` is required; ``spec``, ``data``,
         ``distribution``, ``news``, ``diagnostics``, ``backtest``,
-        ``backtest_metrics``, ``empirical_bands``, ``heatmap`` and ``alternatives`` are
-        used when present).
+        ``backtest_metrics``, ``empirical_bands``, ``heatmap``, ``alternatives``,
+        ``preselection``, ``search`` and ``robustness`` are used when present).
     path : str or pathlib.Path
         Output ``.xlsx`` file (parent folders are created).
 
@@ -760,7 +760,8 @@ def write_run_excel(run: Any, path: str | Path) -> Path:
         The written file, with sheets ``nowcast``, ``loadings``/``factors`` (factor
         models), ``density``, ``news``, ``diagnostics``, ``backtest``/``backtest_rmsfe``/
         ``backtest_metrics``, ``empirical_bands``, ``heatmap``,
-        ``alternatives``/``alternatives_range``, ``data`` and ``info`` as available.
+        ``alternatives``/``alternatives_range``, ``preselection``, ``search``,
+        ``robustness``, ``data`` and ``info`` as available.
 
     Raises
     ------
@@ -810,6 +811,9 @@ def _run_tables(run: Any) -> dict[str, pd.DataFrame]:
         ("heatmap", getattr(run, "heatmap", None), lambda x: x.zscores),
         ("alternatives", getattr(run, "alternatives", None), lambda x: x.table()),
         ("alternatives_range", getattr(run, "alternatives", None), lambda x: x.range()),
+        ("preselection", getattr(run, "preselection", None), lambda x: x.table()),
+        ("search", getattr(run, "search", None), lambda x: x.table()),
+        ("robustness", getattr(run, "robustness", None), lambda x: x.table()),
         ("data", getattr(run, "data", None), lambda x: x.to_frame()),
     ]
     for name, value, convert in optional:

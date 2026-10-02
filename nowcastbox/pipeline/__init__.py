@@ -2,7 +2,10 @@
 
 - :class:`NowcastSpec` — YAML/mapping specification, validated with located error
   messages (:class:`SpecError`);
-- :func:`run_pipeline` — data -> vintage -> preprocessing -> model -> outputs (news,
+- :class:`SelectionSpec` — optional model building before the nowcast (``selection``:
+  pre-selection of the indicators and specification search with a Covid robustness
+  step, as in the ECB toolbox; :mod:`nowcastbox.pipeline.selection`);
+- :func:`run_pipeline` — data -> vintage -> preprocessing -> [selection] -> model -> outputs (news,
   density, diagnostics, backtest with sub-period and directional accuracy, empirical
   error bands, indicator heatmap, alternative models, HTML report, Excel workbook) ->
   snapshot, returning a :class:`PipelineRun`;
@@ -44,6 +47,7 @@ from nowcastbox.pipeline.examples import (
     template_text,
 )
 from nowcastbox.pipeline.runner import PipelineRun, run_pipeline
+from nowcastbox.pipeline.selection import PreselectSpec, SearchSpec, SelectionSpec
 from nowcastbox.pipeline.snapshots import (
     MANIFEST,
     Snapshot,
@@ -103,7 +107,10 @@ __all__ = [
     "OutputsSpec",
     "PipelineRun",
     "PreprocessingSpec",
+    "PreselectSpec",
     "ReportOutput",
+    "SearchSpec",
+    "SelectionSpec",
     "Snapshot",
     "SnapshotDiff",
     "SnapshotStore",

@@ -15,6 +15,7 @@ bench.predict(periods)           # pandas Series indexed by target periods
 | `RandomWalk(drift=False)` | last observed value (with optional drift) | |
 | `HistoricalMean(window=None)` | expanding or rolling mean | Campbell & Thompson (2008) |
 | `BridgeBenchmark(predictors=None, aggregation="average", ...)` | bridge equation with AR-extended indicators | Baffigi et al. (2004) |
+| `BridgeCombinationBenchmark(predictors=None, max_monthly=2, combine="mean", ...)` | [combination of all small bridge equations](bridge-combination.md) | Bańbura, Belousova, Bodnár & Tóth (2023) |
 | `UMIDAS(predictors=None, n_lags=None, ...)` | unrestricted MIDAS by OLS | Foroni, Marcellino & Schumacher (2015) |
 | `MIDAS(polynomial="exp_almon" \| "beta", ...)` | MIDAS with exponential Almon or Beta lag polynomial, NLS | Ghysels, Sinko & Valkanov (2007) |
 | `SklearnBenchmark(estimator, ...)` | any scikit-learn regressor on aggregated indicators (I11) | |

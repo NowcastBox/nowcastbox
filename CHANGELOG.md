@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phase 1 of the parity plan with the ECB Nowcasting Toolbox (Linzenich & Meunier, 2024,
-ECB WP 3004): evaluation and conjunctural outputs.
+Phases 1 and 2 of the parity plan with the ECB Nowcasting Toolbox (Linzenich & Meunier,
+2024, ECB WP 3004): evaluation and conjunctural outputs (0.2.0 features) and model
+building (0.3.0 features: pre-selection, specification search with Covid robustness,
+combination of bridge equations).
 
 ### Added
 
@@ -62,6 +64,88 @@ ECB WP 3004): evaluation and conjunctural outputs.
   table.
 - Top-level `nb.empirical_bands`, `nb.indicator_zscores`, `nb.alternative_models`,
   `nb.AlternativeNowcasts` and `nb.pesaran_timmermann`.
+- **Pre-selection of indicators** (ECB toolbox parity, item 8): `nowcastbox.selection.preselect`
+  ranks the candidate indicators against the target with three criteria and combines the
+  rankings into a weighted score (`weights=`): the HAC t-statistic (Bai & Ng, 2008), sure
+  independence screening (Fan & Lv, 2008) and the order of entry on the LARS path (Efron
+  et al., 2004). Monthly indicators are aggregated to the target frequency with their
+  aggregation rule and can enter with leads and lags (`x_lags=`). `as_of=` restricts the
+  rankings to the data released at a vintage, so there is no look-ahead in pseudo real
+  time; `min_obs` applies to all three rankings. `PreselectionResult.table()` lists the
+  rank, score, best lag, per-method ranks and statistics, and the frequency, publication
+  delay, category and blocks of every series; `.selected`, `.ranking(method)`,
+  `.transform(data)` and `.plot()` are also provided. A helper, `align_to_target`, is
+  added.
+- `nowcastbox.selection.sis` (marginal-correlation screening) and
+  `nowcastbox.selection.lars_select`; `select_targeted_predictors` accepts
+  `method="sis" | "lars"`.
+- `nowcastbox.selection.lars_path`: an in-house least angle regression (Efron et al.,
+  2004) with an optional lasso modification (a predictor dropped by the lasso can
+  re-enter). It is validated against `sklearn.linear_model.lars_path` up to
+  min(n - 1, p) steps; scikit-learn remains a test-only dependency.
+- **Specification search** (ECB toolbox parity, item 9):
+  `nowcastbox.selection.SpecificationSearch` draws model specifications at random or
+  evaluates an exhaustive grid (`n_draws=None`). The space covers model parameters, the
+  start of the sample (`"start"`) and the number of indicators (`"n_series"`), taken from
+  the top of the pre-selection ranking (funnel strategy). Every specification is
+  evaluated with `PseudoRealTimeBacktest` and ranked by a score weighted by horizon
+  (`horizon_weights=`) and metric (`score={"rmsfe": 0.7, "fda": 0.3}`), with losses
+  normalised by rank (default), relative to a benchmark or raw (`weighted_score`);
+  `periods=` restricts the criteria to target sub-periods (as in `BacktestResults`).
+  `ranking="preselect"` recomputes the pre-selection at each vintage (no look-ahead; a
+  fixed ranking computed with later data triggers a warning). Draws are reproducible
+  (one `SeedSequence` child per draw; a `SeedSequence` passed as seed is not modified),
+  `checkpoint=` writes each result to Parquet (CSV without pyarrow) and a later run with
+  the same settings, data and metadata resumes from it, and specifications can be
+  evaluated in parallel (`n_jobs=`).
+- `SearchResults` (`.table()` re-scores with other weights without re-estimating,
+  `.best_spec()`, `.best_model()`, `.summary()`) and
+  `SearchResults.covid_robustness(top, treatments=("none", "dummy", "mask", "outliers"),
+  evaluate_from=...)`, which re-evaluates the best specifications under each pandemic
+  treatment (`covid="dummy"`/`"mask"`, `outliers="auto"`, or a per-vintage IQR correction
+  of the predictors for models without these options; pairs a model cannot apply are
+  skipped with a note) and returns a `CovidRobustness` with `.table()`, `.pivot()`,
+  `.best()` and `.best_model()`.
+- `nowcastbox.selection.SpecifiedModel` (an estimator with a sample start and a funnel
+  selection of indicators, usable like any nowcaster), `ParameterSpace`, `TreatmentPlan`,
+  `OutlierCorrection` and `COVID_TREATMENTS`.
+- **Combination of bridge equations** (ECB toolbox parity, item 10):
+  `nowcastbox.models.BridgeCombination` (Bańbura, Belousova, Bodnár & Tóth, 2023, ECB
+  WP 2815) estimates every equation with 1..`max_monthly` higher-frequency and
+  0..`max_quarterly` target-frequency indicators (optional target/regressor lags) by
+  batched OLS, and pools their nowcasts by mean (default), median or inverse-MSE weights
+  (Stock & Watson, 2004; in-sample or recursive pseudo out-of-sample MSE with window and
+  discount), with optional trimming of the worst equations. `BridgeCombinationResults`
+  adds `equations()` (spec, fit statistics, weight and nowcast of every equation),
+  `equation_estimates`, `weights`, cross-equation dispersion columns and
+  `nowcast_change()` (an approximate news split by equation or indicator).
+  `fit(..., as_of=)` fits on a pseudo real-time vintage. Indicators with no
+  observations, or too few for the extrapolator (e.g. series that start after an early
+  vintage), are left out with a `DataQualityWarning` instead of stopping the fit; a
+  multivariate extrapolator that fails on the whole panel is retried series by series.
+  50 monthly indicators (1,275 equations) fit in well under a second.
+- Pluggable indicator extrapolation (`nowcastbox.models.extrapolation`): `Extrapolator`
+  protocol, `ARExtrapolator`, `register_extrapolator`, `make_extrapolator`,
+  `available_extrapolators`; indicators are completed once per fit and shared by all
+  equations (`"bvar"` is planned for 0.4.0). Also `nowcastbox.models.bridge_equation_count`
+  and `nowcastbox.benchmarks.BridgeCombinationBenchmark`.
+- Pipeline: optional `selection` section run before the nowcast — `selection.preselect`
+  (pre-selection at the run's vintage; with `apply: true`, the default, the model uses
+  the selected indicators and the `backtest` output repeats the pre-selection on every
+  vintage) and `selection.search` (specification search with the spec's model as
+  template, optional `covid_robustness`, and `apply: true` to nowcast with the best
+  specification) — and `model: {type: bridge_combination}`. `PipelineRun.preselection`,
+  `.search` and `.robustness`; snapshots and the Excel workbook store their tables; new
+  `nowcastbox.pipeline.SelectionSpec`, `PreselectSpec` and `SearchSpec`, and the
+  `model_building` template (`nowcastbox init --template model_building`).
+- `NowcastReport(selection=[...])`: pre-selection, specification-search and Covid
+  robustness tables in the diagnostics section.
+- Top-level `nb.preselect`, `nb.PreselectionResult`, `nb.SpecificationSearch`,
+  `nb.SearchResults`, `nb.CovidRobustness`, `nb.SpecifiedModel`, `nb.BridgeCombination`
+  and `nb.BridgeCombinationResults`.
+- Docs: guide "Building a model from scratch" (pre-selection, specification search,
+  Covid robustness, bridge combination), user-guide and theory pages for the three
+  methods.
 
 ### Changed
 
@@ -77,6 +161,9 @@ ECB WP 3004): evaluation and conjunctural outputs.
 - `NowcastResults.distribution()` is annotated as returning
   `NowcastDistribution | EmpiricalQuantileDistribution`.
 - Wheels ship `pipeline/templates/*.xlsx`.
+- Pipeline `model.type` accepts `BridgeCombination` (aliases `bridge_combination`,
+  `bridge-combination`); `ModelSpec.method` returns `"bridge_combination"` for it. Specs
+  asking for `news` or `density` with this model are rejected.
 
 ## [0.1.2] - 2026-10-02
 

@@ -94,3 +94,7 @@ path.chosen, path.selected_series[:5]
 
 Selection is itself a modelling choice: evaluate the selected specification on a period
 not used for the search (e.g. select on 2012–2018, backtest on 2019–2024).
+
+See also the [pre-selection](preselection.md) of the ECB toolbox (t-stat, SIS and LARS
+rankings combined in one score, with leads and lags) and the
+[specification search](specification-search.md).

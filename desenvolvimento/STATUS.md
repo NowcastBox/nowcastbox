@@ -205,3 +205,28 @@ passaram; `ruff check`/`ruff format --check` limpos (309 arquivos); `pyright` 0 
 Pendências da Fase 1: tabelas do paper do PIB e ilustração no JSS; ajuste fino opcional
 (`min_members` nos z-scores de grupo, `window` dos z-scores em períodos da própria série,
 `@overload` em `NowcastResults.distribution`); release 0.2.0.
+
+## Paridade com o *ECB Nowcasting Toolbox* — Fase 2 (0.3.0, integrada em 2026-10-02)
+
+Itens 8–10 concluídos e integrados na branch `ecb-parity` (versão ainda 0.1.2;
+bump/tag/PyPI ficam para a publicação).
+
+| Item | Onde |
+|---|---|
+| 8. Pré-seleção (t-stat, SIS, LARS) | `selection/preselection.py` (`preselect`, `PreselectionResult`, `as_of=`), `selection/_lars.py` (LARS próprio, validado contra o sklearn até min(n−1, p) passos), `selection/targeted.py` (`sis`, `lars_select`) |
+| 9. Busca de especificações + robustez à Covid | `selection/search.py` (`SpecificationSearch`, `SearchResults`, `CovidRobustness`, `weighted_score`, `periods=`), `_search_space.py`, `_search_treatments.py`, `_search_checkpoint.py`, `_specified.py` (`SpecifiedModel`) |
+| 10. Combinação de equações-ponte | `models/bridge_combination.py`, `models/_bridge_batch.py`, `models/extrapolation.py` (registro de extrapoladores; `"bvar"` na Fase 3), `benchmarks/bridge_combination.py` |
+| Integração | topo (`nb.preselect`, `nb.PreselectionResult`, `nb.SpecificationSearch`, `nb.SearchResults`, `nb.CovidRobustness`, `nb.SpecifiedModel`, `nb.BridgeCombination`, `nb.BridgeCombinationResults`); pipeline (`pipeline/selection.py`: seção `selection` com `preselect`/`search`/`covid_robustness`/`apply`; `model.type: bridge_combination`; template `model_building`); snapshot/Excel/relatório HTML com as tabelas de seleção; guia "Building a model from scratch"; nav, referências, `CHANGELOG`, `FONTES`, `CONTRATOS`; `evaluate_periods` → `periods` na busca |
+
+Portões na integração: `pytest -m "not slow and not network" -n auto --cov --cov-branch`
+**4032 passaram, 0 falharam**, cobertura total **99,90 %** (`core/` e `statespace/`
+100 %; módulos novos 100 %); testes `slow` das áreas novas (selection, bridge,
+benchmarks, pipeline, relatórios, CLI, páginas de docs) 55 passaram; `ruff check`/
+`ruff format --check` limpos (336 arquivos); `pyright` 0 erros/0 avisos; `interrogate`
+99,6 %; `bandit -ll` 0 médios/altos; `mkdocs build --strict` limpo.
+
+Pendências da Fase 2: tabela de paridade com o ECB no paper JSS; validação da robustez à
+Covid em dados reais com 2020–2021 (Brasil/EUA); release 0.3.0. Pontos de projeto em
+aberto: normalização por ranks como padrão do score da busca; MSE das equações-ponte em
+amostras de avaliação diferentes quando os indicadores começam em datas distintas
+(opção `common_sample` futura); pesos inverse-MSE com erros reais entre vintages.

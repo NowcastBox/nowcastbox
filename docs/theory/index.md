@@ -15,6 +15,9 @@ in the [references](references.md) (the clean-room record per module is kept in
 | [News decomposition](news.md) | revision of a nowcast as weighted news, revisions, re-estimation |
 | [Density nowcasts and scoring](density-scoring.md) | predictive distributions, bootstrap, proper scores, calibration tests |
 | [Forecast evaluation](forecast-evaluation.md) | pseudo real-time design, RMSFE by horizon, DM, GW, MCS |
+| [Pre-selection](preselection.md) | t-stat, SIS and LARS rankings of the indicators, aggregated score, leads and lags |
+| [Specification search](specification-search.md) | random and grid search of specifications, weighted score by horizon and metric, Covid robustness |
+| [Combination of bridge equations](bridge-combination.md) | thick modelling with small bridge equations, batched OLS, mean/median/inverse-MSE combination, trimming |
 
 ## Notation
 
