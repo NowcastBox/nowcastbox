@@ -670,9 +670,8 @@ def test_as_of_emptying_series_does_not_warn(panel):
     assert early.n_observations()["gdp"] == 0
 
 
-
 def test_as_of_accepts_release_delays_as_series(panel):
-    delays = {name: 20 for name in panel.columns}
+    delays = dict.fromkeys(panel.columns, 20)
     expected = panel.as_of("2018-06-15", delays).to_frame()
     got = panel.as_of("2018-06-15", pd.Series(delays)).to_frame()
     pd.testing.assert_frame_equal(got, expected)
