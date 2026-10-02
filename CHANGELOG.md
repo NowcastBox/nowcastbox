@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-02
+
+### Changed
+
+- Releases are archived on Zenodo (DOI); `CITATION.cff` gains the documentation URL.
+  No code changes.
+
 ## [0.1.0] - 2026-10-02
 
 First public release on PyPI. It contains the release candidate below plus the
