@@ -6,7 +6,8 @@
 
 [![Tests](https://github.com/NowcastBox/nowcastbox/actions/workflows/tests.yml/badge.svg)](https://github.com/NowcastBox/nowcastbox/actions/workflows/tests.yml)
 [![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen)](https://codecov.io/gh/NowcastBox/nowcastbox)
-[![PyPI](https://img.shields.io/badge/pypi-not%20released-lightgrey)](https://pypi.org/project/nowcastbox/)
+[![PyPI](https://img.shields.io/pypi/v/nowcastbox)](https://pypi.org/project/nowcastbox/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23102804.svg)](https://doi.org/10.5281/zenodo.23102804)
 [![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/NowcastBox/nowcastbox/blob/main/LICENSE)
 [![Documentation](https://readthedocs.org/projects/nowcastbox/badge/?version=latest)](https://nowcastbox.readthedocs.io/)
@@ -168,15 +169,18 @@ of the R package was never read).
 
 ## Citation
 
-If you use NowcastBox, please cite it (see [`CITATION.cff`](https://github.com/NowcastBox/nowcastbox/blob/main/CITATION.cff)):
+If you use NowcastBox, please cite it (see [`CITATION.cff`](https://github.com/NowcastBox/nowcastbox/blob/main/CITATION.cff)).
+The DOI [10.5281/zenodo.23102804](https://doi.org/10.5281/zenodo.23102804) always resolves
+to the latest version; each release also has its own DOI on Zenodo.
 
 ```bibtex
 @software{nowcastbox,
   author  = {Haase, Gustavo and Sanches, Alexandre Le{\~a}o},
   title   = {{NowcastBox}: Nowcasting with Dynamic Factor Models in Python},
   year    = {2026},
-  version = {0.1.0},
+  version = {0.1.2},
   license = {MIT},
+  doi     = {10.5281/zenodo.23102804},
   url     = {https://github.com/NowcastBox/nowcastbox}
 }
 ```

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-02
+
+### Changed
+
+- README: Zenodo DOI badge (concept DOI 10.5281/zenodo.23102804), PyPI version badge and
+  DOI in the citation; `CITATION.cff` records the DOI. No code changes.
+
 ## [0.1.1] - 2026-10-02
 
 ### Changed

@@ -1,7 +1,8 @@
 cff-version: 1.2.0
 message: "If you use NowcastBox, please cite it as below."
 title: "NowcastBox: Nowcasting with Dynamic Factor Models in Python"
-version: 0.1.1
+version: 0.1.2
+doi: 10.5281/zenodo.23102804
 date-released: 2026-10-02
 license: MIT
 url: "https://nowcastbox.readthedocs.io/"
