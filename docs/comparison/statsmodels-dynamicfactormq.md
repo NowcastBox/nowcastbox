@@ -24,6 +24,7 @@ performance benchmark. No statsmodels code is copied.
 | Density nowcasts | Gaussian forecast intervals | Gaussian + bootstrap parameter uncertainty, CRPS / PIT (I5) |
 | Vintages, backtesting, benchmarks | — | `pseudo_real_time`, `VintageStore`, `PseudoRealTimeBacktest`, AR/MIDAS/scikit-learn |
 | Diagnostics, reports, pipeline | — | loading stability, convergence, HTML reports, YAML pipeline |
+| Other nowcasting models | — | combination of bridge equations, large mixed-frequency Bayesian VAR (`LargeBVAR`) |
 
 ## Performance
 

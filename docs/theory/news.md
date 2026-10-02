@@ -74,3 +74,10 @@ Gaussian conditioning.
 Impacts add up, so they can be grouped by series, block, category (hard / soft /
 financial) or release date — the basis of the [nowcast tracker](../user-guide/news/tracker.md),
 which chains decompositions through every release of a quarter.
+
+## Other linear-Gaussian models
+
+The same decomposition applies to any model that is linear and Gaussian given its
+parameters. The [large Bayesian VAR](large-bvar.md) exposes its blocked quarterly
+state-space form through `linear_nowcast_model()`, so `nowcastbox.news` decomposes its
+nowcast revisions exactly and maps the releases back to the original monthly series.

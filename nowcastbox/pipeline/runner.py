@@ -373,6 +373,12 @@ def _fmt(value: Any) -> str:
 def _model_line(results: NowcastResults) -> str:
     if "n_factors" not in results.model_params and "n_equations" in results.info:
         return f"equations={results.info['n_equations']}"  # BridgeCombination
+    if results.model_name == "LargeBVAR":
+        lam = results.params.get("lambda")
+        return (
+            f"lags={results.model_params.get('lags')}, "
+            f"variables={results.info.get('n_variables')}, lambda={_fmt(lam)}"
+        )
     parts = [f"factors={results.model_params.get('n_factors')}"]
     if results.n_iter is not None:
         parts.append(f"iterations={results.n_iter}")
@@ -646,7 +652,9 @@ def _unfitted(spec: NowcastSpec, results: NowcastResults, **overrides: Any) -> A
 
 
 def _fit_kwargs(spec: NowcastSpec) -> dict[str, Any] | None:
-    return {"horizon": spec.model.horizon} if spec.model.method == "em" else None
+    if spec.model.method in ("em", "large_bvar"):
+        return {"horizon": spec.model.horizon}
+    return None
 
 
 def _spec_preprocess(spec: NowcastSpec) -> Callable[[MixedFrequencyData], MixedFrequencyData]:
@@ -681,6 +689,8 @@ def _fit(spec: NowcastSpec, panel: MixedFrequencyData) -> NowcastResults:
     if model.method == "bridge_combination":
         estimator = model.estimator_class(horizon=model.horizon, **model.options)
         return estimator.fit(panel, spec.target)
+    if model.method == "large_bvar":
+        return model.estimator_class(**model.options).fit(panel, spec.target, horizon=model.horizon)
     return nowcast(
         panel,
         target=spec.target,
@@ -759,8 +769,11 @@ def _outputs(state: _State, timer: _Timer) -> None:
 def _density(state: _State, options: DensityOutput) -> None:
     from nowcastbox.api import add_density
 
+    kwargs: dict[str, Any] = {}
+    if state.results.model_name == "LargeBVAR":  # posterior mixture over (B, Sigma) draws
+        kwargs["distribution"] = state.results.distribution(random_state=state.spec.random_state)
     state.results = add_density(
-        state.results, n_boot=options.n_boot, random_state=state.spec.random_state
+        state.results, n_boot=options.n_boot, random_state=state.spec.random_state, **kwargs
     )
     state.distribution = state.results.info.get("distribution")
 

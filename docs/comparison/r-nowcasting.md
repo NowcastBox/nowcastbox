@@ -28,6 +28,7 @@ two-step and EM factor models accessible to applied economists and inspired Nowc
 | News decomposition | implemented internally, not exported | `res.news(old, new, period)`: by series, block, category; revisions and re-estimation; tracker; level contributions |
 | Evaluation | — | `PseudoRealTimeBacktest`, RMSFE by horizon, DM/GW/MCS, density scores |
 | Benchmarks | — | AR, random walk, mean, bridge, U-MIDAS, MIDAS, scikit-learn |
+| Other nowcasting models | — | combination of bridge equations, large mixed-frequency Bayesian VAR (`LargeBVAR`, GLP prior, conditional forecasts) |
 | Data access | SGS download (HTTP) | BCB/SGS, IBGE/SIDRA, IPEADATA, FRED/ALFRED over HTTPS with cache |
 | Datasets | US and Brazilian replication data | rebuilt from primary sources: Brazilian panel (99 series), GDP vintages, release calendar, NY Fed, FRED-MD, GRS-like, simulated |
 

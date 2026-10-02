@@ -700,7 +700,9 @@ class BridgeCombination(BaseNowcaster):
         combining, in :math:`[0, 1)`.
     extrapolation : str, callable or None, default "ar"
         Completion of the indicators up to the end of the horizon: a registered name
-        (:func:`~nowcastbox.models.extrapolation.available_extrapolators`), a callable
+        (:func:`~nowcastbox.models.extrapolation.available_extrapolators`: ``"ar"``,
+        univariate AR forecasts; ``"bvar"``, joint conditional forecasts of a Bayesian
+        VAR on the indicators, :class:`~nowcastbox.models.BVARExtrapolator`), a callable
         following :class:`~nowcastbox.models.extrapolation.Extrapolator`, or None (no
         completion: periods with incomplete indicators get no estimate). Indicators the
         extrapolator rejects (too few observations) and indicators without any
@@ -805,7 +807,31 @@ class BridgeCombination(BaseNowcaster):
             raise ValueError("extrapolation_options must be a mapping or None.")
 
     # ------------------------------------------------------------------ pieces
-    def _extrapolator(self) -> Callable[..., dict[str, pd.Series]] | None:
+    def extrapolator(self) -> Callable[..., dict[str, pd.Series]] | None:
+        """Indicator extrapolator configured by ``extrapolation`` (a new instance per call).
+
+        Every fit builds one and calls it once for all the indicators; pass the instance
+        back as ``extrapolation=`` to share what it caches across fits on the same data
+        (the ``"bvar"`` extrapolator keeps its estimated VAR).
+
+        Returns
+        -------
+        callable or None
+            The extrapolator, or None when ``extrapolation=None``.
+
+        Raises
+        ------
+        ValueError
+            If the name is unknown or options are given with a callable.
+        TypeError
+            If the extrapolator rejects an option.
+
+        Examples
+        --------
+        >>> from nowcastbox.models import BridgeCombination
+        >>> BridgeCombination(ar_lags=2).extrapolator()
+        ARExtrapolator(ar_lags=2)
+        """
         spec = self.extrapolation
         if spec is None:
             return None
@@ -817,7 +843,7 @@ class BridgeCombination(BaseNowcaster):
     def _extrapolate(
         self, data: MixedFrequencyData, columns: list[str], end: pd.Period
     ) -> dict[str, pd.Series]:
-        extrapolator = self._extrapolator()
+        extrapolator = self.extrapolator()
         if extrapolator is None:
             return {col: native_until(data, col, end) for col in columns}
         try:

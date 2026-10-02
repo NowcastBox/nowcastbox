@@ -85,7 +85,8 @@ def test_registry() -> None:
     with pytest.raises(TypeError, match="callable"):
         register_extrapolator("x", 3)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="Unknown extrapolation"):
-        make_extrapolator("bvar")
+        make_extrapolator("no-such-extrapolator")
+    assert "bvar" in available_extrapolators()  # registered by nowcastbox.models.bvar
     with pytest.raises(TypeError, match="name or a callable"):
         make_extrapolator(3)  # type: ignore[arg-type]
     with pytest.raises(TypeError):

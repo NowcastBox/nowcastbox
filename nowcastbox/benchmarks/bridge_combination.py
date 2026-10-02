@@ -62,7 +62,10 @@ class BridgeCombinationBenchmark(BaseBenchmark):
     trim : float, default 0.0
         Share of the worst equations (by MSE) discarded.
     extrapolation : str, callable or None, default "ar"
-        Indicator extrapolation (:mod:`nowcastbox.models.extrapolation`).
+        Indicator extrapolation (:mod:`nowcastbox.models.extrapolation`; e.g. ``"ar"``
+        or ``"bvar"``). A named extrapolator is built once per ``fit`` and reused when
+        ``predict`` refits for a longer horizon, so the ``"bvar"`` VAR is estimated
+        once per vintage.
     ar_lags : int, default 1
         AR order of the ``"ar"`` extrapolation.
     extrapolation_options : mapping, optional
@@ -133,14 +136,23 @@ class BridgeCombinationBenchmark(BaseBenchmark):
     _panel: MixedFrequencyData | None = None
     _results: BridgeCombinationResults | None = None
     _horizon: int = -1
+    _extrapolator: Extrapolator | None = None
 
     def _model(self, horizon: int) -> BridgeCombination:
         params = self.get_params(deep=False)
         params.pop("predictors")
-        return BridgeCombination(**params, horizon=horizon)
+        model = BridgeCombination(**params, horizon=horizon)
+        if self._extrapolator is not None:
+            # one extrapolator instance per fit: refits for longer horizons reuse what
+            # it caches (e.g. the estimated VAR of the "bvar" extrapolator)
+            model.set_params(extrapolation=self._extrapolator, extrapolation_options=None)
+        return model
 
     def _fit(self, data: MixedFrequencyData, target: str) -> None:
         check_int("ar_lags", self.ar_lags, 0)
+        self._extrapolator = None
+        built = self._model(0).extrapolator()
+        self._extrapolator = built if isinstance(self.extrapolation, str) else None
         names = resolve_predictors(data, target, self.predictors)
         self._panel = data.select([c for c in data.columns if c in {target, *names}])
         self._run(target, 0)
@@ -176,3 +188,4 @@ class BridgeCombinationBenchmark(BaseBenchmark):
         self._panel = None
         self._results = None
         self._horizon = -1
+        self._extrapolator = None

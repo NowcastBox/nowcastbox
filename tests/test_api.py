@@ -398,3 +398,14 @@ def test_ecb_parity_phase2_entry_points_exist() -> None:
     assert nb.preselect is nb.selection.preselect
     assert nb.SpecificationSearch is nb.selection.SpecificationSearch
     assert nb.BridgeCombination is nb.models.BridgeCombination
+
+
+def test_ecb_parity_phase3_entry_points_exist() -> None:
+    for name in ["LargeBVAR", "LargeBVARResults", "BVARExtrapolator"]:
+        assert name in nb.__all__
+    assert nb.LargeBVAR is nb.models.LargeBVAR
+    assert nb.LargeBVARResults is nb.models.LargeBVARResults
+    assert nb.BVARExtrapolator is nb.models.BVARExtrapolator
+    from nowcastbox.models import available_extrapolators
+
+    assert "bvar" in available_extrapolators()

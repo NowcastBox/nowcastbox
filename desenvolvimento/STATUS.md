@@ -230,3 +230,39 @@ Covid em dados reais com 2020–2021 (Brasil/EUA); release 0.3.0. Pontos de proj
 aberto: normalização por ranks como padrão do score da busca; MSE das equações-ponte em
 amostras de avaliação diferentes quando os indicadores começam em datas distintas
 (opção `common_sample` futura); pesos inverse-MSE com erros reais entre vintages.
+
+## Paridade com o *ECB Nowcasting Toolbox* — Fase 3 (0.4.0, integrada em 2026-10-02)
+
+Item 11 concluído e integrado na branch `ecb-parity`; com isso o plano
+`PLANO_PARIDADE_ECB.md` está concluído (versão ainda 0.1.2; bump/tag/PyPI ficam para a
+publicação).
+
+| Item | Onde |
+|---|---|
+| 11. BVAR grande de frequência mista (Cimadomo et al., 2022) | `models/_bvar_prior.py` (prior NIW de Minnesota, SoC/DIO, verossimilhança marginal fechada por QR, gradiente analítico, escolha hierárquica GLP, retiradas exatas da posterior), `models/_bvar_blocking.py` (blocagem, forma companheira, previsão condicional por Kalman e em forma fechada), `models/bvar.py` (`LargeBVAR`, `LargeBVARResults`, `BlockedBVAR`, `fit_blocked_bvar`) |
+| 10/11. Extrapolação BVAR das equações-ponte | `models/bvar_extrapolation.py` (`BVARExtrapolator`, `MonthlyBVAR`, `fit_monthly_bvar`; extrapolador `"bvar"`), `BridgeCombination.extrapolator()`, reaproveitamento em `benchmarks/bridge_combination.py` |
+| Integração | topo (`nb.LargeBVAR`, `nb.LargeBVARResults`, `nb.BVARExtrapolator`); pipeline `model.type: large_bvar` (aliases `bvar`, `LargeBVAR`; `horizon` no `fit`; *news*; densidade pela mistura da posterior, `n_boot` rejeitado; backtest e relatório HTML funcionam); `add_density(distribution=)`; gancho `linear_nowcast_model()` em `news`; páginas de teoria/guia, nav, referências, comparação e guia do pipeline; `CHANGELOG`, `FONTES`, `CONTRATOS` |
+
+Validação (detalhes nas páginas de teoria): verossimilhança marginal igual à integração
+numérica e a uma referência `mpmath` de 60 dígitos (≈1e-13, inclusive dados em nível com
+priors SoC/DIO apertados); gradiente analítico vs. diferenças finitas; retiradas NIW vs.
+momentos analíticos; previsão condicional (Kalman) = forma fechada = condicionamento
+gaussiano direto (1e-9); recuperação de parâmetros em VAR simulado; cobertura de 89,7 %
+do intervalo de 90 % e PIT uniforme (300 réplicas); RMSE do nowcast do PIB 1,27 vs. 1,00
+do `MixedFreqDFM` (DGP verdadeiro) e 2,78 da média; sem look-ahead no backtest.
+
+Portões na integração: `pytest -m "not slow and not network" -n auto --cov --cov-branch`
+**4183 passaram, 0 falharam**, cobertura total **99,91 %** (`core/` e `statespace/`
+100 %; `_bvar_prior.py`, `_bvar_blocking.py`, `bvar.py`, `bvar_extrapolation.py`,
+`bridge_combination.py`, `extrapolation.py`, `pipeline/spec.py` 100 %); testes `slow`
+do BVAR e das equações-ponte 5 passaram; `slow` de docs/pipeline/benchmarks/relatórios/
+CLI/news/selection 56 passaram; `ruff check`/`ruff format --check` limpos (346
+arquivos); `pyright` 0 erros/0 avisos; `interrogate` 99,6 %; `bandit -ll` 0 médios/altos;
+`mkdocs build --strict` limpo.
+
+Pendências da Fase 3: release 0.4.0; comparação em dados reais (Brasil/NY Fed);
+amostra de estimação limitada ao maior trecho balanceado (séries que começam tarde a
+encurtam — preencher lacunas internas por EM/simulação é trabalho futuro); hiperparâmetros
+na moda da posterior (sem o Metropolis do GLP); `nowcast_tracker` indisponível para o
+BVAR; só grades mensais com séries mensais/trimestrais; `distribution(n_boot=...)` não
+suportado no BVAR (usar `n_draws`).

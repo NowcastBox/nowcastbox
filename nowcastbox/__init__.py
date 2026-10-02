@@ -28,6 +28,10 @@ rankings of the indicators), ``nb.SpecificationSearch`` (random or grid search o
 specifications scored in pseudo real time, with a Covid robustness step) and
 ``nb.BridgeCombination`` (combination of all small bridge equations).
 
+ECB-toolbox parity (0.4.0): ``nb.LargeBVAR`` (large mixed-frequency Bayesian VAR with
+blocking, GLP hierarchical prior, conditional forecasts, posterior densities and news)
+and ``nb.BVARExtrapolator`` (``BridgeCombination(extrapolation="bvar")``).
+
 Examples
 --------
 >>> import nowcastbox as nb
@@ -110,6 +114,9 @@ from nowcastbox.models import (
     BridgeCombinationResults,
     BridgeEquation,
     BridgeResults,
+    BVARExtrapolator,
+    LargeBVAR,
+    LargeBVARResults,
     MixedFreqDFM,
     MixedFreqDFMResults,
     TwoStepDFM,
@@ -179,6 +186,7 @@ from nowcastbox.vintages import (
 __all__ = [
     "AggregationType",
     "AlternativeNowcasts",
+    "BVARExtrapolator",
     "BacktestResults",
     "BaseBenchmark",
     "BaseNowcaster",
@@ -199,6 +207,8 @@ __all__ = [
     "FormulaError",
     "Frequency",
     "Identity",
+    "LargeBVAR",
+    "LargeBVARResults",
     "LevelContributions",
     "Log",
     "MixedFreqDFM",

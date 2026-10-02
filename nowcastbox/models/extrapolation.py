@@ -20,8 +20,8 @@ from its first period up to the last native period contained in ``end``, observe
 values unchanged and missing values after the last observation filled. Named
 extrapolators are created by factories kept in a registry:
 
-* :func:`register_extrapolator` - add a factory (``"bvar"`` will be registered by
-  :mod:`nowcastbox.models.bvar`);
+* :func:`register_extrapolator` - add a factory (``"bvar"`` is registered by
+  :mod:`nowcastbox.models.bvar_extrapolation`);
 * :func:`make_extrapolator` - build one from a name (with options) or pass a callable
   through;
 * :func:`available_extrapolators` - registered names.
@@ -273,7 +273,7 @@ def make_extrapolator(spec: str | Extrapolator, **options: Any) -> Extrapolator:
     Parameters
     ----------
     spec : str or callable
-        Registered name (``"ar"``; ``"bvar"`` once registered) or an extrapolator.
+        Registered name (``"ar"``, ``"bvar"``) or an extrapolator.
     **options
         Keyword options of the factory (e.g. ``ar_lags=2`` for ``"ar"``); not allowed
         with a callable ``spec``.

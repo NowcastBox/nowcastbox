@@ -38,7 +38,7 @@ random_state: 0
 | `target`, `name`, `description` | what is nowcast and the run's name (used for snapshots) |
 | `data` | `source` (dataset name, `csv`, `parquet`, `excel` or connector series), sample window, `vintage`, metadata overrides (frequencies, transforms, delays, blocks, categories) |
 | `preprocessing` | `prepare_panel` options (`enabled: false` to skip) |
-| `model` | `type` (`MixedFreqDFM`, `TwoStepDFM` or `bridge_combination`), `factors` (number or per block; not for the bridge combination), and any estimator option |
+| `model` | `type` (`MixedFreqDFM`, `TwoStepDFM`, `bridge_combination` or `large_bvar`), `factors` (number or per block; not for the bridge combination or the BVAR), and any estimator option |
 | `selection` | optional [model building](#model-building) before the nowcast: `preselect` (pre-selection of the indicators) and `search` (specification search with a Covid robustness step) |
 | `outputs` | `nowcast`, `news` (against the previous snapshot or a date), `density` (`n_boot`), `diagnostics`, `report_html`, `backtest` (with `metrics` and sub-`periods`), `empirical_bands`, `heatmap`, `alternatives`, `excel` (workbook with the results) |
 | `snapshot_dir`, `random_state` | archive location and seed |
@@ -184,7 +184,8 @@ run.alternatives.range()
 |---|---|---|
 | `selection.preselect` | any argument of [`preselect`](selection/preselection.md) (`methods`, `x_lags`, `weights`, `top`, `horizon`, `aggregation`...), `apply` (default `true`) | ranks the indicators at the run's vintage (`run.preselection`); with `apply: true` the model uses the selected indicators only, and the `backtest` output repeats the pre-selection on every vintage (no look-ahead) |
 | `selection.search` | `space` (required), `n_draws` (`null` = grid), `ranking`, `backtest` (`start`, `end`, `step`, `refit_every`, `n_vintages`, `benchmarks`...), `score`, `horizon_weights`, `periods`, `normalize`, `metrics`, `max_missing`, `n_jobs`, `checkpoint`, `covid_robustness` (`top`, `treatments`, `evaluate_from`), `apply` (default `false`) | runs a [specification search](selection/specification-search.md) with the spec's model as template (`run.search`, `run.robustness`); with `n_series` in `space` the funnel uses the `preselect` options, recomputed on every vintage; with `apply: true` the best specification (of the robustness step when it runs) becomes the model of the run |
-| `model.type: bridge_combination` | options of [`BridgeCombination`](models/bridge-combination.md) (`max_monthly`, `max_quarterly`, `combine`, `mse`, `trim`, `extrapolation`...) | combination of all small bridge equations; `news` and `density` are not available (use `empirical_bands` with a `backtest`) |
+| `model.type: bridge_combination` | options of [`BridgeCombination`](models/bridge-combination.md) (`max_monthly`, `max_quarterly`, `combine`, `mse`, `trim`, `extrapolation`...) | combination of all small bridge equations; `news` and `density` are not available (use `empirical_bands` with a `backtest`); `extrapolation: bvar` completes the indicators with a Bayesian VAR |
+| `model.type: large_bvar` (alias `bvar`; new in 0.4.0) | options of [`LargeBVAR`](models/large-bvar.md) (`lags`, `prior`, `prior_mean`, `sum_of_coefficients`, `initial_observation`, `estimate_psi`, `n_draws`...) and `horizon` | large mixed-frequency Bayesian VAR (Cimadomo et al., 2022); `news` works with a quarterly target; `density` uses the posterior mixture when `n_draws > 0` (`n_boot` is rejected) |
 
 The search runs on the vintage data before preprocessing, with the spec's publication
 delays and preprocessing applied to every pseudo real-time vintage. A failure of a

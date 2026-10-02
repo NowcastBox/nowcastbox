@@ -6,7 +6,7 @@
 | Versão de partida | `nowcastbox` 0.1.2 (PyPI, DOI 10.5281/zenodo.23102804) |
 | Versões-alvo | 0.2.0 (Fase 1), 0.3.0 (Fase 2), 0.4.0 (Fase 3) |
 | Data do documento | 2026-10-02 |
-| Status | **Fases 1 e 2 concluídas** (integradas na branch `ecb-parity`, 2026-10-02; releases 0.2.0/0.3.0 ainda não publicados); Fase 3 em planejamento |
+| Status | **Plano concluído: Fases 1, 2 e 3 integradas** na branch `ecb-parity` (2026-10-02); releases 0.2.0/0.3.0/0.4.0 ainda não publicados |
 
 ---
 
@@ -44,7 +44,7 @@ passo de integração de cada fase.
 | 8 | Pré-seleção completa (SIS, LARS, score agregado) | 2 | M | `selection/targeted.py`, `selection/preselection.py` (novo) | **Concluído** |
 | 9 | Busca aleatória de especificações + robustez à Covid | 2 | M | `selection/search.py` (novo), `experiment/` | **Concluído** |
 | 10 | Combinação de bridge equations | 2 | M | `models/bridge_combination.py` (novo), `benchmarks/` | **Concluído** |
-| 11 | BVAR grande (Cimadomo et al. 2022) | 3 | L | `models/bvar.py` (novo), `models/_bvar_prior.py` (novo) | Planejado |
+| 11 | BVAR grande (Cimadomo et al. 2022) | 3 | L | `models/bvar.py`, `models/_bvar_prior.py`, `models/_bvar_blocking.py`, `models/bvar_extrapolation.py` (novos) | **Concluído** |
 
 Esforço: S ≈ até 1 dia, M ≈ 2–5 dias, L ≈ 2–3 semanas (inclui testes, docs e validação).
 
@@ -384,6 +384,28 @@ N = 50–100 séries.
 **Release 0.4.0**; no paper JSS, se a Fase 3 não estiver pronta na submissão, citar como
 trabalho futuro.
 
+### Integração da Fase 3
+
+> **Situação (2026-10-02): concluída**, exceto o release 0.4.0 e o paper JSS.
+> Feito: `_bvar_prior.py` (prior NIW de Minnesota + SoC/DIO, verossimilhança marginal
+> fechada por QR, gradiente analítico, escolha hierárquica GLP, retiradas exatas da
+> posterior); `_bvar_blocking.py` (blocagem, forma companheira, previsão condicional por
+> Kalman e em forma fechada); `bvar.py` (`LargeBVAR`/`LargeBVARResults`: nowcast pela
+> previsão condicional na média da posterior, densidade por mistura sobre retiradas
+> NIW, *news* e contribuições exatas via gancho `linear_nowcast_model()`, `predict` por
+> vintage, aviso quando a amostra balanceada descarta trimestres); `bvar_extrapolation.py`
+> (extrapolador `"bvar"` do Item 10: VAR mensal com indicadores só mensais, VAR por blocos
+> com trimestrais, cache por vintage, reaproveitado pelo `BridgeCombinationBenchmark`);
+> `nb.LargeBVAR`, `nb.LargeBVARResults`, `nb.BVARExtrapolator` no topo; pipeline
+> `model.type: large_bvar` (com *news*, densidade pela posterior, backtest e relatório
+> HTML); páginas de teoria/guia, nav, referências, comparação; `CHANGELOG`, `FONTES`,
+> `CONTRATOS`, `STATUS`.
+>
+> Limitações registradas: amostra de estimação = maior trecho balanceado (séries que
+> começam tarde encurtam a amostra; `DataQualityWarning`); hiperparâmetros na moda da
+> posterior (sem o passo de Metropolis do GLP); `nowcast_tracker` indisponível para o
+> BVAR; só grades mensais com séries mensais/trimestrais; sem estudo em dados reais.
+
 ---
 
 ## Cronograma sugerido
@@ -416,4 +438,5 @@ R `nowcasting` | `statsmodels` DFMQ | NY Fed | ECB toolbox | `nowcastbox`.
 2. Bandas empíricas: incluir o nível 57,5 % por padrão (convenção do ECB) além de 68 %/90 %?
 3. LARS: implementação própria (sem nova dependência) — confirmar.
 4. Excel: extra opcional `[excel]` com `openpyxl` — confirmar.
-5. Fase 3 (BVAR) antes ou depois da submissão do JSS.
+5. Fase 3 (BVAR) antes ou depois da submissão do JSS. (Fase 3 concluída em 2026-10-02;
+   resta decidir se a submissão cita a 0.4.0.)

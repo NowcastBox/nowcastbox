@@ -77,7 +77,7 @@ __all__ = [
     "load_spec",
 ]
 
-MODEL_TYPES: tuple[str, ...] = ("MixedFreqDFM", "TwoStepDFM", "BridgeCombination")
+MODEL_TYPES: tuple[str, ...] = ("MixedFreqDFM", "TwoStepDFM", "BridgeCombination", "LargeBVAR")
 """Estimators a spec can name (``model.type``)."""
 
 FILE_SOURCES: tuple[str, ...] = ("csv", "parquet")
@@ -116,12 +116,17 @@ _MODEL_ALIASES: dict[str, str] = {
     "twostep": "TwoStepDFM",
     "bridgecombination": "BridgeCombination",
     "bridge_combination": "BridgeCombination",
+    "largebvar": "LargeBVAR",
+    "large_bvar": "LargeBVAR",
+    "bvar": "LargeBVAR",
 }
 _METHODS = {
     "MixedFreqDFM": "em",
     "TwoStepDFM": "two_step",
     "BridgeCombination": "bridge_combination",
+    "LargeBVAR": "large_bvar",
 }
+_FACTORLESS = ("BridgeCombination", "LargeBVAR")
 _FACTOR_KEYS = ("factors", "n_factors", "factor_lags", "blocks", "n_shocks", "robust", "rmax")
 _OUTPUT_ALIASES: dict[str, str] = {
     "report": "report_html",
@@ -803,10 +808,12 @@ class ModelSpec:
 
     Parameters
     ----------
-    type : {"MixedFreqDFM", "TwoStepDFM", "BridgeCombination"}
+    type : {"MixedFreqDFM", "TwoStepDFM", "BridgeCombination", "LargeBVAR"}
         Estimator class (``bridge_combination`` is an alias of
         :class:`~nowcastbox.models.BridgeCombination`, which takes no factor settings:
-        its options are ``max_monthly``, ``combine``, ``extrapolation``...).
+        its options are ``max_monthly``, ``combine``, ``extrapolation``...;
+        ``large_bvar``/``bvar`` of :class:`~nowcastbox.models.LargeBVAR`, whose options
+        are ``lags``, ``prior``, ``prior_mean``, ``n_draws``...).
     n_factors : int, dict or "auto"
         Number of factors (per block with a mapping, plan §6.2 ``factors``);
         ``"auto"``: Bai & Ng (2002) criterion.
@@ -846,7 +853,7 @@ class ModelSpec:
 
     @property
     def method(self) -> str:
-        """``"em"``, ``"two_step"`` (the :func:`nowcastbox.nowcast` methods) or ``"bridge_combination"``."""
+        """``"em"``, ``"two_step"`` (:func:`nowcastbox.nowcast`), ``"bridge_combination"`` or ``"large_bvar"``."""
         return _METHODS[self.type]
 
     @property
@@ -870,8 +877,10 @@ class ModelSpec:
         2
         >>> ModelSpec(type="BridgeCombination", options={"combine": "median"}).to_dict()
         {'type': 'BridgeCombination', 'horizon': 1, 'combine': 'median'}
+        >>> ModelSpec(type="LargeBVAR", horizon=0, options={"lags": 2}).to_dict()
+        {'type': 'LargeBVAR', 'horizon': 0, 'lags': 2}
         """
-        if self.type == "BridgeCombination":
+        if self.type in _FACTORLESS:
             return {"type": self.type, "horizon": self.horizon, **_plain(self.options)}
         out: dict[str, Any] = {
             "type": self.type,
@@ -906,8 +915,8 @@ def _parse_model(raw: Any, issues: _Issues) -> ModelSpec | None:
     options = {**{k: v for k, v in model.items() if k not in _MODEL_KEYS}, **extra}
     allowed = _known_kwargs(spec.estimator_class.__init__)
     structural = ("n_factors", "factor_lags", "blocks", "horizon", "n_shocks")
-    if mtype == "BridgeCombination":
-        return _parse_bridge_combination(model, options, allowed, issues)
+    if mtype in _FACTORLESS:
+        return _parse_factorless(mtype, model, options, allowed, issues)
     issues.check_keys(options, [a for a in allowed if a not in structural] + ["robust"], "model")
     if "factors" in model and "n_factors" in model:
         issues.add("model.n_factors", "give either 'factors' or 'n_factors', not both")
@@ -934,17 +943,21 @@ def _parse_model(raw: Any, issues: _Issues) -> ModelSpec | None:
     )
 
 
-def _parse_bridge_combination(
-    model: Mapping[str, Any], options: dict[str, Any], allowed: list[str], issues: _Issues
+def _parse_factorless(
+    mtype: str,
+    model: Mapping[str, Any],
+    options: dict[str, Any],
+    allowed: list[str],
+    issues: _Issues,
 ) -> ModelSpec:
-    """``model.type: bridge_combination``: no factor settings, estimator options only."""
+    """``bridge_combination`` / ``large_bvar``: no factor settings, estimator options only."""
     for key in (*_FACTOR_KEYS, "criterion"):
         if key in model:
-            issues.add(f"model.{key}", "is not an option of BridgeCombination (no factors)")
+            issues.add(f"model.{key}", f"is not an option of {mtype} (no factors)")
     issues.check_keys(options, [a for a in allowed if a != "horizon"], "model")
     horizon = _integer(model.get("horizon"), "model.horizon", issues, minimum=0, default=1)
     return ModelSpec(
-        type="BridgeCombination",
+        type=mtype,
         n_factors=0,
         horizon=1 if horizon is None else horizon,
         options={k: v for k, v in options.items() if k in allowed},
@@ -2165,6 +2178,8 @@ def _check_outputs(outputs: OutputsSpec, model: ModelSpec | None, issues: _Issue
         )
     if model is not None and model.type == "BridgeCombination":
         _check_bridge_outputs(outputs, issues)
+    if model is not None and model.type == "LargeBVAR":
+        _check_bvar_outputs(outputs, issues)
     if model is None or model.type != "TwoStepDFM":
         return
     aggregate = model.options.get("aggregate", "factors")
@@ -2185,6 +2200,14 @@ def _check_bridge_outputs(outputs: OutputsSpec, issues: _Issues) -> None:
         issues.add(
             "outputs.density",
             "BridgeCombination has no model-based density; use outputs.empirical_bands",
+        )
+
+
+def _check_bvar_outputs(outputs: OutputsSpec, issues: _Issues) -> None:
+    if outputs.density is not None and outputs.density.n_boot:
+        issues.add(
+            "outputs.density.n_boot",
+            "LargeBVAR densities come from posterior draws: set model.n_draws, not n_boot",
         )
 
 

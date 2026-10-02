@@ -89,8 +89,7 @@ Each indicator is completed up to the end of the forecast horizon before aggrega
 `BridgeEquation`); `extrapolation=None` does not complete the indicators, so an
 equation contributes to a quarter only when its indicators are complete. Any callable
 with the signature `f(data, columns, end) -> {name: series}` can be passed, or
-registered under a name — the planned large-BVAR extrapolation will be registered as
-`"bvar"` in the same way:
+registered under a name, as the `"bvar"` extrapolation is (see below):
 
 ```python
 from nowcastbox.models import register_extrapolator
@@ -110,6 +109,54 @@ in the panel, or that the extrapolator rejects (too few observations for the AR 
 typically a series that starts after an early pseudo real-time vintage), are left out
 of the combination with a `DataQualityWarning` instead of stopping the fit; a
 multivariate extrapolator that fails on the whole panel is retried series by series.
+
+## BVAR extrapolation
+
+`extrapolation="bvar"` completes all the indicators jointly with the conditional forecast
+of one Bayesian VAR (GLP prior, posterior mean of the parameters). A release of one
+indicator then also moves the completion of the others. The univariate AR forecasts of
+`"ar"` do not have this effect.
+
+```python
+res = BridgeCombination(extrapolation="bvar").fit(ds.data, "gdp")
+res.extrapolated["x10"].tail(6)       # released values, then the conditional forecast
+
+# options of the extrapolator (nowcastbox.models.BVARExtrapolator)
+BridgeCombination(
+    extrapolation="bvar",
+    extrapolation_options={"lags": 6, "prior": {"lambda": 0.2}, "blocking": False},
+).fit(ds.data, "gdp")
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `blocking` | `None` | `None` uses a monthly VAR when every indicator is monthly and the blocked quarterly VAR of `LargeBVAR` otherwise. `False` forces the monthly VAR and `True` the blocked one. |
+| `lags` | `None` | VAR order: 3 months for the monthly VAR, 1 quarter for the blocked one |
+| `prior`, `prior_mean`, `sum_of_coefficients`, `initial_observation`, `estimate_psi`, `lag_decay`, `standardize`, `max_iter` | as `LargeBVAR` | prior and estimation, see [Large BVAR](large-bvar.md) |
+
+The monthly VAR is the default for monthly indicators because it is the natural model
+for monthly forecasts. It has $N$ variables, whereas the blocked VAR has $3N$, and it has
+three times as many observations. When quarterly indicators are also completed, the
+blocked VAR puts them in the same model; the [theory page](../../theory/bridge-combination.md#bvar-extrapolation)
+gives the details.
+
+The VAR is estimated once per fit and cached in the extrapolator instance.
+`BridgeCombinationBenchmark` builds one instance per `fit`, so its refits for longer
+horizons reuse the VAR. To share the VAR between your own fits on the same vintage, pass
+an instance:
+
+```python
+from nowcastbox.models import BVARExtrapolator
+
+ext = BVARExtrapolator()
+a = BridgeCombination(extrapolation=ext, horizon=0).fit(ds.data, "gdp")
+b = BridgeCombination(extrapolation=ext, horizon=2).fit(ds.data, "gdp")   # no re-estimation
+```
+
+The estimation sample is the longest run of complete months (or quarters) that ends at
+the last complete one. A `DataQualityWarning` names the series whose gaps shorten it.
+With 50 monthly indicators and 20 years of data, the GLP fit of the monthly VAR(3) took
+about 0.5 s on one BLAS thread.
 
 ## Pseudo real time, backtests and news
 

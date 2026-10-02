@@ -162,6 +162,8 @@ nav:
           - Time-varying long-run mean: user-guide/models/long-run-mean.md
           - Bridge equations: user-guide/models/bridge.md
           - Combination of bridge equations: user-guide/models/bridge-combination.md
+          - BVAR prior and hyperparameters: user-guide/models/bvar-prior.md
+          - Large Bayesian VAR: user-guide/models/large-bvar.md
           - Benchmarks: user-guide/models/benchmarks.md
       - Selection:
           - Number of factors: user-guide/selection/number-of-factors.md
@@ -210,6 +212,8 @@ nav:
       - Pre-selection (t-stat, SIS, LARS): theory/preselection.md
       - Specification search and Covid robustness: theory/specification-search.md
       - Combination of bridge equations: theory/bridge-combination.md
+      - BVAR priors and hierarchical selection: theory/bvar-prior.md
+      - Large mixed-frequency Bayesian VAR: theory/large-bvar.md
       - References: theory/references.md
   - Datasets:
       - datasets/index.md

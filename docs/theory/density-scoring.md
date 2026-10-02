@@ -34,6 +34,10 @@ $$
 optionally re-centred at the point nowcast. Quantiles are obtained by inverting the
 mixture CDF numerically.
 
+The [large Bayesian VAR](large-bvar.md#density-nowcasts) uses the same mixture form, with
+draws from the Normal-Inverse-Wishart posterior of the VAR coefficients and covariance in
+place of the bootstrap replications.
+
 ## Proper scoring rules
 
 A scoring rule $S(F, y)$ is *proper* if the expected score is optimised by the true

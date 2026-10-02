@@ -4,7 +4,10 @@
 ``MixedFreqDFM`` (EM of Banbura & Modugno, 2014, with blocks and AR(1)
 idiosyncratic components), ``BridgeEquation`` and ``BridgeCombination`` (all small
 bridge equations combined; Bańbura, Belousova, Bodnár & Tóth, 2023) with pluggable
-indicator extrapolators (:mod:`nowcastbox.models.extrapolation`).
+indicator extrapolators (:mod:`nowcastbox.models.extrapolation`) and ``LargeBVAR`` (large
+mixed-frequency Bayesian VAR with blocking; Cimadomo, Giannone, Lenza, Monti & Sokol,
+2022); :mod:`nowcastbox.models.bvar_extrapolation` registers the ``"bvar"`` extrapolator
+(a monthly or blocked BVAR completing the indicators jointly).
 """
 
 __all__: list[str] = []
@@ -52,4 +55,22 @@ __all__ += [
     "bridge_equation_count",
     "make_extrapolator",
     "register_extrapolator",
+]
+
+from nowcastbox.models.bvar import (
+    BlockedBVAR,
+    LargeBVAR,
+    LargeBVARResults,
+    fit_blocked_bvar,
+)
+from nowcastbox.models.bvar_extrapolation import BVARExtrapolator, MonthlyBVAR, fit_monthly_bvar
+
+__all__ += [
+    "BVARExtrapolator",
+    "BlockedBVAR",
+    "LargeBVAR",
+    "LargeBVARResults",
+    "MonthlyBVAR",
+    "fit_blocked_bvar",
+    "fit_monthly_bvar",
 ]

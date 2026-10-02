@@ -492,6 +492,7 @@ def add_density(
     *,
     n_boot: int = 0,
     random_state: int | np.random.Generator | None = None,
+    distribution: Any = None,
     **kwargs: Any,
 ) -> NowcastResults:
     """Overwrite the uncertainty columns of ``results.nowcast`` with a density nowcast.
@@ -504,6 +505,10 @@ def add_density(
         Bootstrap replications (``0``: Gaussian filtering uncertainty only).
     random_state : int or numpy.random.Generator, optional
         Seed of the bootstrap.
+    distribution : NowcastDistribution, optional
+        Predictive distribution already computed (for example the posterior mixture of
+        :meth:`LargeBVARResults.distribution <nowcastbox.models.LargeBVARResults.distribution>`);
+        ``n_boot`` and ``**kwargs`` are then ignored.
     **kwargs
         Further options of :func:`~nowcastbox.density.nowcast_distribution`.
 
@@ -530,7 +535,9 @@ def add_density(
     ... )
     True
     """
-    dist = nowcast_distribution(results, n_boot=n_boot, random_state=random_state, **kwargs)
+    dist = distribution
+    if dist is None:
+        dist = nowcast_distribution(results, n_boot=n_boot, random_state=random_state, **kwargs)
     bands = dist.to_frame(levels=DENSITY_LEVELS)
     frame = results.nowcast.copy()
     for column in DENSITY_COLUMNS:

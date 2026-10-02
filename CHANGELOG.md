@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phases 1 and 2 of the parity plan with the ECB Nowcasting Toolbox (Linzenich & Meunier,
-2024, ECB WP 3004): evaluation and conjunctural outputs (0.2.0 features) and model
+Phases 1, 2 and 3 of the parity plan with the ECB Nowcasting Toolbox (Linzenich & Meunier,
+2024, ECB WP 3004): evaluation and conjunctural outputs (0.2.0 features), model
 building (0.3.0 features: pre-selection, specification search with Covid robustness,
-combination of bridge equations).
+combination of bridge equations) and the large Bayesian VAR (0.4.0 features).
 
 ### Added
 
@@ -127,7 +127,7 @@ combination of bridge equations).
 - Pluggable indicator extrapolation (`nowcastbox.models.extrapolation`): `Extrapolator`
   protocol, `ARExtrapolator`, `register_extrapolator`, `make_extrapolator`,
   `available_extrapolators`; indicators are completed once per fit and shared by all
-  equations (`"bvar"` is planned for 0.4.0). Also `nowcastbox.models.bridge_equation_count`
+  equations (`"bvar"` added in the 0.4.0 features below). Also `nowcastbox.models.bridge_equation_count`
   and `nowcastbox.benchmarks.BridgeCombinationBenchmark`.
 - Pipeline: optional `selection` section run before the nowcast — `selection.preselect`
   (pre-selection at the run's vintage; with `apply: true`, the default, the model uses
@@ -146,6 +146,54 @@ combination of bridge equations).
 - Docs: guide "Building a model from scratch" (pre-selection, specification search,
   Covid robustness, bridge combination), user-guide and theory pages for the three
   methods.
+- **Large mixed-frequency Bayesian VAR** (`nowcastbox.models.LargeBVAR`, ECB toolbox
+  parity, item 11), following Cimadomo, Giannone, Lenza, Monti & Sokol (2022):
+  - monthly series are blocked into one quarterly variable per month of the quarter;
+    quarterly series enter as they are;
+  - quarterly VAR with the Normal-Inverse-Wishart Minnesota prior, optional
+    sum-of-coefficients and dummy-initial-observation priors, and the hierarchical
+    choice of the tightness of Giannone, Lenza & Primiceri (2015);
+  - ragged edge handled by conditional forecasts (Kalman smoother on the companion form,
+    with a closed-form equivalent);
+  - density nowcasts as a mixture over posterior draws of (B, Σ), compatible with CRPS,
+    PIT and fan charts (`n_draws=`, `results.distribution(method="posterior")`);
+  - exact news decomposition and level contributions through the linear-Gaussian
+    representation (`results.news`, `results.level_contributions`);
+  - `predict(vintage)` for pseudo real-time updates between refits;
+  - `LargeBVARResults`, `BlockedBVAR`, `fit_blocked_bvar`;
+  - a `DataQualityWarning` when the balanced estimation sample leaves out earlier
+    quarters with data (a series that starts late or has an interior gap), naming the
+    series responsible.
+- **BVAR prior machinery** (`nowcastbox.models._bvar_prior`): Normal-Inverse-Wishart
+  Minnesota prior in the GLP parameterisation, also written as dummy observations, plus
+  sum-of-coefficients and dummy-initial-observation priors; closed-form posterior and
+  marginal likelihood computed from a QR factorisation of the stacked system
+  (Ω^{1/2}X', I)' without forming X'X, accurate for data in levels with tight
+  sum-of-coefficients/initial-observation priors; analytic gradient of the log marginal
+  likelihood in log λ, ψ, μ, δ; hierarchical selection with GLP's Gamma and
+  inverse-Gamma hyperpriors (L-BFGS-B plus inverse Hessian); exact posterior draws.
+- **`"bvar"` indicator extrapolation for `BridgeCombination`** (ECB toolbox parity,
+  items 10/11): `BridgeCombination(extrapolation="bvar")` completes all the indicators
+  jointly with the conditional forecast of a Bayesian VAR (GLP prior, posterior mean,
+  Kalman smoother), falling back series by series when it cannot be estimated.
+  - When every indicator is monthly it uses a monthly VAR (`MonthlyBVAR`,
+    `fit_monthly_bvar`; 3 lags by default). When quarterly indicators are also completed
+    it uses the blocked quarterly VAR of `LargeBVAR`. `blocking=True/False` forces one or
+    the other.
+  - The VAR is estimated once per vintage and cached in the `BVARExtrapolator`
+    instance. `BridgeCombinationBenchmark` reuses one instance across the refits for
+    longer horizons.
+  - New public method `BridgeCombination.extrapolator()`.
+- `nowcastbox.news` accepts any results object exposing `linear_nowcast_model()`.
+- Pipeline `model.type: large_bvar` (aliases `LargeBVAR`, `bvar`): `LargeBVAR` options,
+  `horizon` passed to `fit`, `news` output, and a `density` output from the posterior
+  mixture when `n_draws > 0` (`n_boot` is rejected for this model); the run summary
+  shows lags, number of blocked variables and λ. `add_density(..., distribution=)`
+  accepts a precomputed distribution.
+- Top-level `nb.LargeBVAR`, `nb.LargeBVARResults` and `nb.BVARExtrapolator`.
+- Docs: theory and user-guide pages "BVAR priors and hierarchical selection" and "Large
+  mixed-frequency Bayesian VAR", a "BVAR extrapolation" section in the bridge
+  combination pages, and the BVAR references.
 
 ### Changed
 
@@ -164,6 +212,9 @@ combination of bridge equations).
 - Pipeline `model.type` accepts `BridgeCombination` (aliases `bridge_combination`,
   `bridge-combination`); `ModelSpec.method` returns `"bridge_combination"` for it. Specs
   asking for `news` or `density` with this model are rejected.
+- `BridgeCombinationBenchmark` builds one extrapolator per fit and passes the instance to
+  its internal `BridgeCombination`, so `results_.model_params["extrapolation"]` holds the
+  extrapolator instance (for example `ARExtrapolator(ar_lags=1)`) rather than its name.
 
 ## [0.1.2] - 2026-10-02
 

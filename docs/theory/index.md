@@ -17,7 +17,9 @@ in the [references](references.md) (the clean-room record per module is kept in
 | [Forecast evaluation](forecast-evaluation.md) | pseudo real-time design, RMSFE by horizon, DM, GW, MCS |
 | [Pre-selection](preselection.md) | t-stat, SIS and LARS rankings of the indicators, aggregated score, leads and lags |
 | [Specification search](specification-search.md) | random and grid search of specifications, weighted score by horizon and metric, Covid robustness |
-| [Combination of bridge equations](bridge-combination.md) | thick modelling with small bridge equations, batched OLS, mean/median/inverse-MSE combination, trimming |
+| [Combination of bridge equations](bridge-combination.md) | thick modelling with small bridge equations, batched OLS, mean/median/inverse-MSE combination, trimming, BVAR extrapolation of the indicators |
+| [BVAR priors and hierarchical selection](bvar-prior.md) | Normal-Inverse-Wishart Minnesota prior, sum-of-coefficients and dummy-initial-observation priors, closed-form marginal likelihood, GLP hyperpriors |
+| [Large mixed-frequency Bayesian VAR](large-bvar.md) | blocking of monthly series into quarterly variables, conditional forecasts for the ragged edge, posterior-mixture densities, news |
 
 ## Notation
 

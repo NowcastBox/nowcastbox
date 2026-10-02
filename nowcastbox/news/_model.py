@@ -723,7 +723,10 @@ def linear_model(
     results : NowcastResults
         Results of :class:`~nowcastbox.models.MixedFreqDFM` (any base grid, including
         weekly/daily calendar aggregation) or of :class:`~nowcastbox.models.TwoStepDFM`
-        (``aggregate="factors"`` or ``"variables"``).
+        (``aggregate="factors"`` or ``"variables"``), or any results with a
+        ``linear_nowcast_model()`` method returning a :class:`LinearNowcastModel`
+        (:class:`~nowcastbox.models.LargeBVARResults`, whose grid is the blocked
+        quarterly one).
     categories : mapping of str to category, optional
         Override of the category label of some series (default: the
         ``SeriesMetadata.category`` of the estimation panel).
@@ -747,10 +750,15 @@ def linear_model(
     from nowcastbox.models.em import MixedFreqDFMResults
     from nowcastbox.models.two_step import TwoStepResults
 
+    hook = getattr(results, "linear_nowcast_model", None)
     if isinstance(results, MixedFreqDFMResults):
         lin = _from_em(results)
     elif isinstance(results, TwoStepResults):
         lin = _from_two_step(results)
+    elif callable(hook):  # other linear-Gaussian models (e.g. LargeBVARResults)
+        lin = hook()
+        if not isinstance(lin, LinearNowcastModel):
+            raise TypeError("linear_nowcast_model() must return a LinearNowcastModel.")
     else:
         raise TypeError(
             "News decompositions need MixedFreqDFMResults or TwoStepResults (state-space "

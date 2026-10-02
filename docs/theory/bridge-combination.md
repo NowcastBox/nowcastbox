@@ -37,9 +37,52 @@ forecast horizon by an *extrapolator* — by default iterated AR($p$) forecasts 
 on the indicator's own history — and only then aggregated. Because the completion of an
 indicator does not depend on the equation it enters, it is done **once per vintage** and
 the aggregated indicators $\bar x^{(k)}_\tau$ are shared by all $E$ equations. The
-extrapolator is pluggable: a multivariate model (the large BVAR of Cimadomo, Giannone,
-Lenza, Monti & Sokol, 2022, planned for a later release) completes all indicators
-jointly through the same interface.
+extrapolator is pluggable: a multivariate model completes all indicators jointly through
+the same interface.
+
+### BVAR extrapolation
+
+`extrapolation="bvar"` completes the indicators with the conditional forecast of one
+Bayesian VAR estimated on them. The VAR has the Normal-Inverse-Wishart Minnesota prior,
+and its tightness is the posterior mode of the hierarchical model of Giannone, Lenza &
+Primiceri (2015) (see [BVAR priors](bvar-prior.md)). Let $X$ hold the released entries of
+the indicators at the vintage. With the parameters at their posterior mean
+$(\bar B, \bar\Sigma)$, every unreleased entry is replaced by
+
+$$
+\hat x_{i,t} = E\big[x_{i,t} \mid X;\ \bar B, \bar\Sigma\big],
+$$
+
+which is the conditional forecast of Waggoner & Zha (1999) and Bańbura, Giannone & Lenza
+(2015). It is computed with the Kalman smoother on the companion form of the VAR, with
+missing values for the unreleased entries, starting from the last window of $p$
+complete periods. A released value of one indicator therefore moves the completion of
+the others through the estimated covariance $\bar\Sigma$ and the lag coefficients. The
+AR extrapolator ignores these links.
+
+Two VARs are available:
+
+- **Monthly VAR** (default when every indicator is monthly). This is a VAR($p$) on the
+  monthly indicators, the large monthly BVAR of Bańbura, Giannone & Reichlin (2010), with
+  $p = 3$ by default. Extrapolating monthly indicators is a monthly forecasting problem.
+  The monthly VAR has $N$ variables and three times as many observations as a blocked
+  VAR, and each newly complete month enlarges the conditioning window.
+- **Blocked quarterly VAR** (default when quarterly indicators are also completed). This
+  is the "blocking" model of Cimadomo, Giannone, Lenza, Monti & Sokol (2022), used by
+  [`LargeBVAR`](large-bvar.md): each monthly series becomes three quarterly variables,
+  so monthly and quarterly indicators share one VAR. It has $3N$ variables (150 for 50
+  indicators) and only quarterly observations, with $p = 1$ by default, which covers the
+  same one-quarter memory as the monthly default.
+
+The estimation sample is the longest run of complete periods that ends at the last
+complete one. The VAR is estimated once per vintage, and the extrapolator instance caches
+it, keyed by a hash of the data. Calls for a longer horizon on the same vintage reuse it,
+for example the refits that `BridgeCombinationBenchmark.predict` makes. When the joint VAR
+cannot be estimated (too few complete periods), the combination retries series by series
+and leaves out the series that still fail.
+
+Only the point extrapolation enters the bridge equations. Like the AR extrapolation, it
+ignores the uncertainty of the completed indicators.
 
 ## Estimation in batches
 
@@ -122,9 +165,13 @@ equally by the indicators of the equation for an indicator-level view.
 
 - Baffigi, A., Golinelli, R., & Parigi, G. (2004). Bridge models to forecast the euro area GDP. *International Journal of Forecasting*, 20(3), 447–460.
 - Bańbura, M., Belousova, I., Bodnár, K., & Tóth, M. B. (2023). Nowcasting employment in the euro area. ECB Working Paper No. 2815.
+- Bańbura, M., Giannone, D., & Lenza, M. (2015). Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections. *International Journal of Forecasting*, 31(3), 739–756.
+- Bańbura, M., Giannone, D., & Reichlin, L. (2010). Large Bayesian vector auto regressions. *Journal of Applied Econometrics*, 25(1), 71–92.
 - Bańbura, M., & Modugno, M. (2014). Maximum likelihood estimation of factor models on datasets with arbitrary pattern of missing data. *Journal of Applied Econometrics*, 29(1), 133–160.
 - Cimadomo, J., Giannone, D., Lenza, M., Monti, F., & Sokol, A. (2022). Nowcasting with large Bayesian vector autoregressions. *Journal of Econometrics*, 231(2), 500–519.
 - Diron, M. (2008). Short-term forecasts of euro area real GDP growth: an assessment of real-time performance based on vintage data. *Journal of Forecasting*, 27(5), 371–390.
+- Giannone, D., Lenza, M., & Primiceri, G. E. (2015). Prior selection for vector autoregressions. *Review of Economics and Statistics*, 97(2), 436–451.
 - Linzenich, J., & Meunier, B. (2024). Nowcasting made easier: a toolbox for economists. ECB Working Paper No. 3004.
 - Stock, J. H., & Watson, M. W. (2004). Combination forecasts of output growth in a seven-country data set. *Journal of Forecasting*, 23(6), 405–430.
 - Timmermann, A. (2006). Forecast combinations. In G. Elliott, C. W. J. Granger, & A. Timmermann (Eds.), *Handbook of Economic Forecasting* (Vol. 1, pp. 135–196). Elsevier.
+- Waggoner, D. F., & Zha, T. (1999). Conditional forecasts in dynamic multivariate models. *Review of Economics and Statistics*, 81(4), 639–651.
