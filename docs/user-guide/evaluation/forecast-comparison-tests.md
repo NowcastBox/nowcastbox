@@ -10,6 +10,7 @@ both as functions of error series and as methods of `BacktestResults` (by horizo
 | Clark & West (2007), for *nested* models (e.g. an AR inside a DFM or a bridge) | equal MSPE once the larger model's estimation noise is removed | `clark_west` |
 | Giacomini & White (2006) | equal *conditional* expected loss, $E[d_{t+h} \mid \mathcal F_t] = 0$ | `giacomini_white` |
 | Model Confidence Set, Hansen, Lunde & Nason (2011) | equal expected loss within the set | `model_confidence_set` / `BacktestResults.mcs` |
+| Pesaran & Timmermann (1992), directional accuracy | predicted and actual directions independent | `pesaran_timmermann` / `BacktestResults.directional_accuracy` |
 
 $d_t = L(e_{1t}) - L(e_{2t})$ is the loss differential (squared or absolute loss).
 
@@ -86,6 +87,20 @@ out.diebold_mariano(reference="AR", horizon="kind", aggregate="target_period", h
 out.clark_west(reference="AR")                   # AR nested in the competitors
 out.giacomini_white(reference="AR")
 out.mcs(alpha=0.1, n_bootstrap=500, aggregate="target_period")
+```
+
+Every method also takes `periods=` to run the tests by sub-period (index level
+`period`), e.g. without the pandemic quarters:
+
+```python
+out.diebold_mariano(reference="AR", horizon="kind", aggregate="target_period", h=2,
+                    periods={"to 2017": (None, "2017Q4"), "2018-19": ("2018Q1", None)})
+out.directional_accuracy(horizon="kind")         # FDA and Pesaran-Timmermann p-value
+```
+
+<!-- skip-test -->
+```python
+out.diebold_mariano(reference="AR", periods="ex-covid")
 ```
 
 !!! warning "Several vintages per target period"

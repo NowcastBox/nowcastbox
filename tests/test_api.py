@@ -367,3 +367,17 @@ def test_weekly_panel_em_and_two_step_rejected() -> None:
         warnings.simplefilter("ignore")
         res = nb.nowcast(panel, "gdp", n_factors=1, max_iter=5)
     assert res.nowcast["out_of_sample"].notna().any()
+
+
+def test_ecb_parity_entry_points_exist() -> None:
+    for name in [
+        "empirical_bands",
+        "indicator_zscores",
+        "alternative_models",
+        "AlternativeNowcasts",
+        "pesaran_timmermann",
+    ]:
+        assert name in nb.__all__
+    assert nb.empirical_bands is nb.density.empirical_bands
+    assert nb.alternative_models is nb.experiment.alternative_models
+    assert hasattr(nb.MixedFrequencyData, "released_share")

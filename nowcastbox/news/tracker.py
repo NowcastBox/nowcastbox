@@ -43,7 +43,15 @@ logger = get_logger(__name__)
 
 DateLike = str | dt.date | pd.Timestamp
 
-_PATH_COLUMNS = ["nowcast", "change", "news", "revisions", "reestimation", "n_releases"]
+_PATH_COLUMNS = [
+    "nowcast",
+    "change",
+    "news",
+    "revisions",
+    "reestimation",
+    "n_releases",
+    "released_share",
+]
 
 
 @dataclass(frozen=True, kw_only=True, eq=False)
@@ -60,7 +68,10 @@ class NowcastTracker:
         Grouping of :attr:`contributions` (``"series"``, ``"block"`` or ``"category"``).
     path : pandas.DataFrame
         Index = vintage dates; columns ``nowcast``, ``change`` (vs. previous vintage),
-        ``news``, ``revisions``, ``reestimation`` and ``n_releases``.
+        ``news``, ``revisions``, ``reestimation``, ``n_releases`` and ``released_share``
+        (share of the target period's observations of the model's predictors released
+        at the vintage, see
+        :meth:`~nowcastbox.core.data.MixedFrequencyData.released_share`).
     contributions : pandas.DataFrame
         Change of the nowcast at each vintage: news by group plus ``revisions`` and
         ``re-estimation`` columns (first row zero). Row sums equal ``path["change"]``.
@@ -170,19 +181,20 @@ class NowcastTracker:
         --------
         >>> print(tr.summary())  # doctest: +SKIP
         """
-        width = 78
+        width = 88
         lines = [
             "=" * width,
             f"Nowcast tracker: {self.target} {self.target_period} ({len(self.path)} vintages)",
             "=" * width,
             f"  {'vintage':<14}{'nowcast':>12}{'change':>12}{'news':>12}"
-            f"{'revisions':>12}{'releases':>10}",
+            f"{'revisions':>12}{'releases':>10}{'released':>10}",
         ]
         for vintage, row in self.path.iterrows():
             label = vintage.strftime("%Y-%m-%d") if isinstance(vintage, pd.Timestamp) else vintage
             lines.append(
                 f"  {label!s:<14}{row['nowcast']:>12.4f}{row['change']:>12.4f}"
                 f"{row['news']:>12.4f}{row['revisions']:>12.4f}{int(row['n_releases']):>10d}"
+                f"{row['released_share']:>10.0%}"
             )
         lines.append("=" * width)
         return "\n".join(lines)
@@ -407,6 +419,8 @@ def nowcast_tracker(
     previous_panel = _panel(source, cal, vintages[0])
     if fixed is None:
         fixed = estimator.clone().fit(previous_panel, name)  # type: ignore[union-attr]
+    predictors = _model_predictors(fixed, name)
+    shares = [_released_share(previous_panel, period, name, predictors)]
     previous_results = fixed
     steps: list[NewsResults] = []
     for date in vintages[1:]:
@@ -421,10 +435,37 @@ def nowcast_tracker(
             categories=categories,
         )
         steps.append(step)
+        shares.append(_released_share(panel, period, name, predictors))
         previous_panel = panel
         previous_results = new_results if new_results is not None else previous_results
         logger.debug("tracker %s: nowcast %.4f", date.date(), step.new_nowcast)
-    return _assemble(name, period, by, vintages, steps)
+    return _assemble(name, period, by, vintages, steps, shares)
+
+
+def _model_predictors(results: Any, target: str) -> list[str] | None:
+    """Predictors of fitted results (their estimation panel without the target)."""
+    data = getattr(results, "data", None)
+    if data is None:
+        return None
+    return [c for c in data.columns if c != target]
+
+
+def _released_share(
+    panel: Any, period: pd.Period, target: str, model_series: Sequence[str] | None = None
+) -> float:
+    """Share of the target period's predictor observations released in ``panel``.
+
+    Only the model's predictors (``model_series``) are counted when given, so that a
+    formula fit on a subset of the panel is not diluted by unused series.
+    """
+    panel = as_mixed_frequency_data(panel)
+    predictors = [
+        c for c in panel.columns if c != target and (model_series is None or c in model_series)
+    ]
+    if not predictors:
+        return float("nan")
+    table = panel.released_share(period, series=predictors)
+    return float(table["share"].to_numpy(dtype=float)[-1])
 
 
 def _assemble(
@@ -433,6 +474,7 @@ def _assemble(
     by: str,
     vintages: pd.DatetimeIndex,
     steps: list[NewsResults],
+    shares: list[float],
 ) -> NowcastTracker:
     rows = [
         {
@@ -462,6 +504,7 @@ def _assemble(
         entry["re-estimation"] = step.reestimation_effect
         contrib_rows.append(entry)
     path = pd.DataFrame(rows, index=vintages, columns=_PATH_COLUMNS)
+    path["released_share"] = shares
     path["n_releases"] = path["n_releases"].astype(int)
     contributions = pd.DataFrame(contrib_rows, index=vintages).fillna(0.0).astype(float)
     groups = [c for c in contributions.columns if c not in ("revisions", "re-estimation")]

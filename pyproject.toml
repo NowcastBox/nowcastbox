@@ -72,6 +72,7 @@ test = [
     "threadpoolctl>=3.1.0",
     "scikit-learn>=1.3.0",
     "pyarrow>=12.0.0",
+    "openpyxl>=3.1",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -83,6 +84,7 @@ dev = [
     "threadpoolctl>=3.1.0",
     "scikit-learn>=1.3.0",
     "pyarrow>=12.0.0",
+    "openpyxl>=3.1",
     "ruff>=0.15.0",
     # pinned with the stubs: newer pandas-stubs/pyright releases change the type verdicts
     "pyright==1.1.408",
@@ -107,6 +109,10 @@ data = [
 ]
 r = [
     "rpy2>=3.5.0",
+]
+# Excel data templates and result export (pipeline ``data.source: excel``, ``outputs.excel``).
+excel = [
+    "openpyxl>=3.1",
 ]
 
 [project.scripts]
@@ -139,6 +145,7 @@ nowcastbox = [
     "reports/templates/**/*.css",
     "reports/templates/**/*.js",
     "pipeline/templates/*.yaml",
+    "pipeline/templates/*.xlsx",
 ]
 
 # ---------------------------------------------------------------------------

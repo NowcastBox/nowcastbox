@@ -3,8 +3,11 @@
 - :class:`NowcastSpec` — YAML/mapping specification, validated with located error
   messages (:class:`SpecError`);
 - :func:`run_pipeline` — data -> vintage -> preprocessing -> model -> outputs (news,
-  density, diagnostics, backtest, HTML report) -> snapshot, returning a
-  :class:`PipelineRun`;
+  density, diagnostics, backtest with sub-period and directional accuracy, empirical
+  error bands, indicator heatmap, alternative models, HTML report, Excel workbook) ->
+  snapshot, returning a :class:`PipelineRun`;
+- Excel data templates (:func:`read_excel_panel`, :func:`write_excel_panel`,
+  :func:`write_run_excel`, :func:`example_workbook_path`; optional extra ``[excel]``);
 - :class:`SnapshotStore` — versioned snapshots (spec, data hash, nowcast table, model
   parameters, news against the previous snapshot, report), with listing, loading,
   nowcast history and diffs;
@@ -21,12 +24,18 @@ Examples
 
 from nowcastbox.pipeline.data import (
     CONNECTORS,
+    EXCEL_DATA_SHEETS,
+    EXCEL_METADATA_COLUMNS,
     apply_vintage,
     data_hash,
+    example_workbook_path,
     frame_hash,
     load_data,
     preprocess,
+    read_excel_panel,
     read_panel_file,
+    write_excel_panel,
+    write_run_excel,
 )
 from nowcastbox.pipeline.examples import (
     DEFAULT_TEMPLATE,
@@ -45,14 +54,19 @@ from nowcastbox.pipeline.snapshots import (
 )
 from nowcastbox.pipeline.spec import (
     CONNECTOR_SOURCES,
+    EXCEL_SOURCE,
     FILE_SOURCES,
     MODEL_TYPES,
     OUTPUT_NAMES,
+    AlternativesOutput,
     BacktestOutput,
     ConnectorSeries,
     DataSpec,
     DensityOutput,
     DiagnosticsOutput,
+    EmpiricalBandsOutput,
+    ExcelOutput,
+    HeatmapOutput,
     ModelSpec,
     NewsOutput,
     NowcastSpec,
@@ -67,15 +81,22 @@ __all__ = [
     "CONNECTORS",
     "CONNECTOR_SOURCES",
     "DEFAULT_TEMPLATE",
+    "EXCEL_DATA_SHEETS",
+    "EXCEL_METADATA_COLUMNS",
+    "EXCEL_SOURCE",
     "FILE_SOURCES",
     "MANIFEST",
     "MODEL_TYPES",
     "OUTPUT_NAMES",
+    "AlternativesOutput",
     "BacktestOutput",
     "ConnectorSeries",
     "DataSpec",
     "DensityOutput",
     "DiagnosticsOutput",
+    "EmpiricalBandsOutput",
+    "ExcelOutput",
+    "HeatmapOutput",
     "ModelSpec",
     "NewsOutput",
     "NowcastSpec",
@@ -89,6 +110,7 @@ __all__ = [
     "SpecError",
     "apply_vintage",
     "data_hash",
+    "example_workbook_path",
     "frame_hash",
     "headline_period",
     "jsonable",
@@ -96,8 +118,11 @@ __all__ = [
     "load_data",
     "load_spec",
     "preprocess",
+    "read_excel_panel",
     "read_panel_file",
     "run_pipeline",
     "template_path",
     "template_text",
+    "write_excel_panel",
+    "write_run_excel",
 ]

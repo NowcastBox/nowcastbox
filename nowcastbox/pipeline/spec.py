@@ -1,8 +1,8 @@
 """Declarative nowcast specification (innovation I10, plan section 6.2).
 
 A :class:`NowcastSpec` describes a production nowcast end to end: the target, where the
-data come from (a built-in dataset, a CSV/Parquet file or the BCB/IBGE/IPEA/FRED
-connectors), the information set (``vintage``), the preprocessing, the model and the
+data come from (a built-in dataset, a CSV/Parquet file, an Excel workbook or the
+BCB/IBGE/IPEA/FRED connectors), the information set (``vintage``), the preprocessing, the model and the
 outputs (nowcast table, news against the previous snapshot, density, diagnostics, HTML
 report, optional backtest), plus the directory of versioned snapshots. Specs are parsed
 from YAML (or a plain mapping) and validated up front; every problem is reported with
@@ -14,7 +14,7 @@ Example (``nowcastbox init`` writes a commented version)::
     name: pib_brazil
     target: pib
     data:
-      source: brazil_nowcast        # built-in dataset, csv, parquet or connectors
+      source: brazil_nowcast        # built-in dataset, csv, parquet, excel or connectors
       vintage: today
     model:
       type: MixedFreqDFM
@@ -43,14 +43,19 @@ from nowcastbox.core.exceptions import NowcastBoxError
 
 __all__ = [
     "CONNECTOR_SOURCES",
+    "EXCEL_SOURCE",
     "FILE_SOURCES",
     "MODEL_TYPES",
     "OUTPUT_NAMES",
+    "AlternativesOutput",
     "BacktestOutput",
     "ConnectorSeries",
     "DataSpec",
     "DensityOutput",
     "DiagnosticsOutput",
+    "EmpiricalBandsOutput",
+    "ExcelOutput",
+    "HeatmapOutput",
     "ModelSpec",
     "NewsOutput",
     "NowcastSpec",
@@ -67,6 +72,12 @@ MODEL_TYPES: tuple[str, ...] = ("MixedFreqDFM", "TwoStepDFM")
 FILE_SOURCES: tuple[str, ...] = ("csv", "parquet")
 """File-based data sources (``data.source``)."""
 
+EXCEL_SOURCE = "excel"
+"""Excel workbook data source (``data.source: excel``; optional extra ``[excel]``)."""
+
+_EXCEL_SUFFIXES = (".xlsx", ".xlsm")
+_EXCEL_ROLES = ("monthly", "quarterly", "annual", "metadata")
+
 CONNECTOR_SOURCES: tuple[str, ...] = ("bcb", "ibge", "ipea", "fred")
 """Connectors usable in ``data.series.<name>.source``."""
 
@@ -77,6 +88,10 @@ OUTPUT_NAMES: tuple[str, ...] = (
     "diagnostics",
     "report_html",
     "backtest",
+    "empirical_bands",
+    "heatmap",
+    "alternatives",
+    "excel",
 )
 """Outputs a spec can request (``outputs``)."""
 
@@ -89,7 +104,14 @@ _MODEL_ALIASES: dict[str, str] = {
     "two_step": "TwoStepDFM",
     "twostep": "TwoStepDFM",
 }
-_OUTPUT_ALIASES: dict[str, str] = {"report": "report_html", "html": "report_html"}
+_OUTPUT_ALIASES: dict[str, str] = {
+    "report": "report_html",
+    "html": "report_html",
+    "xlsx": "excel",
+    "bands": "empirical_bands",
+    "zscores": "heatmap",
+    "alternative_models": "alternatives",
+}
 _EM_ONLY = ("idiosyncratic", "long_run_mean", "outliers", "covid", "robust")
 _TOP_KEYS = (
     "name",
@@ -116,6 +138,7 @@ _DATA_COMMON = (
     "categories",
 )
 _DATA_FILE = ("path", "index_column", "legend")
+_DATA_EXCEL = ("path", "sheets")
 _DATA_CONNECTORS = ("series",)
 _SERIES_KEYS = (
     "source",
@@ -156,7 +179,15 @@ _BACKTEST_KEYS = (
     "window_length",
     "refit_every",
     "model",
+    "metrics",
+    "periods",
 )
+_BACKTEST_METRICS = ("rmsfe", "mse", "mae", "bias", "fda", "n")
+_PERIOD_SHORTCUTS = ("covid", "ex-covid")
+_HEATMAP_KEYS = ("by", "smooth", "window", "last")
+_BANDS_KEYS = ("method", "window", "levels", "outliers", "min_errors", "availability")
+_BANDS_METHODS = ("mae", "rmse", "quantile")
+_ALTERNATIVES_KEYS = ("by", "drop", "refit")
 _BENCHMARK_TYPES = ("AR", "RandomWalk", "HistoricalMean", "UMIDAS", "MIDAS", "BridgeBenchmark")
 _DATE_RE = re.compile(r"^\d{4}-\d{2}(-\d{2})?$")
 
@@ -416,14 +447,18 @@ class DataSpec:
     ----------
     source : str
         Built-in dataset name (see :func:`nowcastbox.datasets.list_datasets`),
-        ``"csv"``, ``"parquet"`` or ``"connectors"``.
+        ``"csv"``, ``"parquet"``, ``"excel"`` or ``"connectors"``.
     path : pathlib.Path, optional
-        Data file (``csv``/``parquet``), resolved against the spec directory.
+        Data file (``csv``/``parquet``/``excel``), resolved against the spec directory.
     index_column : str, optional
         Column with the dates of a file (default: the first column).
     legend : pathlib.Path, optional
         CSV with one row per series (``name`` plus any of ``frequency``,
         ``transform``, ``delay_days``, ``blocks`` (``;``-separated), ``category``).
+    sheets : dict of str to str, optional
+        Excel sheet of each role (``monthly``, ``quarterly``, ``annual``,
+        ``metadata``; default: the role names), see
+        :func:`~nowcastbox.pipeline.data.read_excel_panel`.
     series : tuple of ConnectorSeries
         Series to download (``connectors``).
     columns : tuple of str, optional
@@ -443,6 +478,7 @@ class DataSpec:
     path: Path | None = None
     index_column: str | None = None
     legend: Path | None = None
+    sheets: dict[str, str | None] | None = None
     series: tuple[ConnectorSeries, ...] = ()
     columns: tuple[str, ...] | None = None
     start: str | None = None
@@ -455,9 +491,11 @@ class DataSpec:
 
     @property
     def kind(self) -> str:
-        """``"dataset"``, ``"file"`` or ``"connectors"``."""
+        """``"dataset"``, ``"file"``, ``"excel"`` or ``"connectors"``."""
         if self.source in FILE_SOURCES:
             return "file"
+        if self.source == EXCEL_SOURCE:
+            return "excel"
         if self.source == "connectors":
             return "connectors"
         return "dataset"
@@ -498,6 +536,8 @@ def _parse_data(raw: Any, issues: _Issues, base_dir: Path | None) -> tuple[DataS
     allowed: list[str] = list(_DATA_COMMON)
     if source in FILE_SOURCES:
         allowed += list(_DATA_FILE)
+    elif source == EXCEL_SOURCE:
+        allowed += list(_DATA_EXCEL)
     elif source == "connectors":
         allowed += list(_DATA_CONNECTORS)
     issues.check_keys(data, allowed, "data")
@@ -510,6 +550,8 @@ def _parse_data(raw: Any, issues: _Issues, base_dir: Path | None) -> tuple[DataS
     }
     if source in FILE_SOURCES:
         fields.update(_parse_file_fields(data, path, issues, base_dir))
+    elif source == EXCEL_SOURCE:
+        fields.update(_parse_excel_fields(data, path, issues, base_dir))
     elif source == "connectors":
         fields["series"] = _parse_series(data.get("series"), issues)
     else:
@@ -518,12 +560,14 @@ def _parse_data(raw: Any, issues: _Issues, base_dir: Path | None) -> tuple[DataS
 
 
 def _normalise_source(source: str, data: Mapping[str, Any]) -> tuple[str, Any]:
-    """Accept ``source: path/to/file.csv`` as a shortcut for ``source: csv``."""
+    """Accept ``source: path/to/file.csv`` (or ``.xlsx``) as a shortcut for ``source: csv``."""
     lowered = source.lower()
     for ext in FILE_SOURCES:
         if lowered.endswith(f".{ext}"):
             return ext, data.get("path", source)
-    if lowered in (*FILE_SOURCES, "connectors"):
+    if lowered.endswith(_EXCEL_SUFFIXES):
+        return EXCEL_SOURCE, data.get("path", source)
+    if lowered in (*FILE_SOURCES, EXCEL_SOURCE, "connectors"):
         return lowered, data.get("path")
     return source, data.get("path")
 
@@ -580,6 +624,22 @@ def _parse_file_fields(
         if legend is None
         else _resolve_path(legend, "data.legend", issues, base_dir),
     }
+
+
+def _parse_excel_fields(
+    data: Mapping[str, Any], path: Any, issues: _Issues, base_dir: Path | None
+) -> dict[str, Any]:
+    """``path`` and ``sheets`` of an Excel source."""
+    sheets = _mapping(data.get("sheets"), "data.sheets", issues)
+    parsed: dict[str, str | None] | None = None
+    if sheets:
+        issues.check_keys(sheets, _EXCEL_ROLES, "data.sheets")
+        parsed = {
+            str(k): (None if v in (None, False) else str(v))
+            for k, v in sheets.items()
+            if k in _EXCEL_ROLES
+        }
+    return {"path": _resolve_path(path, "data.path", issues, base_dir), "sheets": parsed}
 
 
 def _parse_series(raw: Any, issues: _Issues) -> tuple[ConnectorSeries, ...]:
@@ -1023,6 +1083,13 @@ class BacktestOutput:
         Re-estimate every k vintages.
     model : dict
         Overrides of the model options in the backtest (e.g. ``{max_iter: 50}``).
+    metrics : tuple of str, default ("rmsfe", "mae", "bias", "n")
+        Metrics of the stored accuracy table (``backtest_metrics``), see
+        :meth:`~nowcastbox.evaluation.BacktestResults.metrics`; ``"fda"`` adds the
+        forecast directional accuracy.
+    periods : str or dict, optional
+        Sub-periods of the accuracy table: ``"covid"``, ``"ex-covid"`` or
+        ``{label: [first, last]}`` with target periods (``null`` = open end).
 
     Examples
     --------
@@ -1039,6 +1106,120 @@ class BacktestOutput:
     window_length: int | None = None
     refit_every: int = 1
     model: dict[str, Any] = dataclasses.field(default_factory=dict)
+    metrics: tuple[str, ...] = ("rmsfe", "mae", "bias", "n")
+    periods: str | dict[str, list[str | None]] | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class EmpiricalBandsOutput:
+    """Empirical error bands around the nowcast (``outputs.empirical_bands``).
+
+    Built by :func:`~nowcastbox.density.empirical_bands` from the errors of the
+    ``backtest`` output at the same horizon (needs ``outputs.backtest``).
+
+    Parameters
+    ----------
+    method : {"mae", "rmse", "quantile"}, default "mae"
+        Scale of the past errors (ECB convention: MAE).
+    window : str or None, default "10Y"
+        Rolling window of past errors (``None``: every past error).
+    levels : tuple of float, default (0.575, 0.68, 0.9)
+        Band levels.
+    outliers : {"exclude", "winsorize"}, optional
+        Treatment of outlying past errors.
+    min_errors : int, default 8
+        Minimum number of past errors at a horizon.
+    availability : {"release", "period_end"}, default "release"
+        When a past error counts as known.
+
+    Examples
+    --------
+    >>> EmpiricalBandsOutput().levels
+    (0.575, 0.68, 0.9)
+    """
+
+    method: str = "mae"
+    window: str | None = "10Y"
+    levels: tuple[float, ...] = (0.575, 0.68, 0.9)
+    outliers: str | None = None
+    min_errors: int = 8
+    availability: str = "release"
+
+
+@dataclasses.dataclass(frozen=True)
+class HeatmapOutput:
+    """Z-score heatmap of the indicators (``outputs.heatmap``).
+
+    Built by :func:`~nowcastbox.diagnostics.indicator_zscores` on the model-ready panel
+    of the vintage (moments use only data available at the vintage).
+
+    Parameters
+    ----------
+    by : str, optional
+        Grouping (``"category"``, ``"block"``, ``"frequency"``; default: by series).
+    smooth : str or None, default "mm"
+        Smoothing of the monthly series (Mariano-Murasawa 1-2-3-2-1 weights).
+    window : int, optional
+        Rolling window of the moments, in base periods (default: whole sample).
+    last : int, default 24
+        Number of most recent periods drawn in the report.
+
+    Examples
+    --------
+    >>> HeatmapOutput(by="category").last
+    24
+    """
+
+    by: str | None = None
+    smooth: str | None = "mm"
+    window: int | None = None
+    last: int = 24
+
+
+@dataclasses.dataclass(frozen=True)
+class AlternativesOutput:
+    """Nowcasts of alternative models without one or two groups (``outputs.alternatives``).
+
+    Built by :func:`~nowcastbox.experiment.alternative_models`.
+
+    Parameters
+    ----------
+    by : str, default "category"
+        Grouping of the predictors (``"category"`` or ``"block"``).
+    drop : tuple of int, default (1, 2)
+        Numbers of groups removed at a time.
+    refit : bool, default True
+        Re-estimate every alternative (``False``: re-filter with the base parameters).
+
+    Examples
+    --------
+    >>> AlternativesOutput(refit=False).drop
+    (1, 2)
+    """
+
+    by: str = "category"
+    drop: tuple[int, ...] = (1, 2)
+    refit: bool = True
+
+
+@dataclasses.dataclass(frozen=True)
+class ExcelOutput:
+    """Excel export of the run (``outputs.excel``; optional extra ``[excel]``).
+
+    Parameters
+    ----------
+    path : pathlib.Path, optional
+        Extra location of the workbook (resolved against the spec directory); the
+        snapshot, when written, always gets ``results.xlsx``. See
+        :func:`~nowcastbox.pipeline.data.write_run_excel` for the sheets.
+
+    Examples
+    --------
+    >>> ExcelOutput().path is None
+    True
+    """
+
+    path: Path | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1052,6 +1233,10 @@ class OutputsSpec:
     diagnostics : DiagnosticsOutput, optional
     report_html : ReportOutput, optional
     backtest : BacktestOutput, optional
+    empirical_bands : EmpiricalBandsOutput, optional
+    heatmap : HeatmapOutput, optional
+    alternatives : AlternativesOutput, optional
+    excel : ExcelOutput, optional
 
     Examples
     --------
@@ -1064,6 +1249,10 @@ class OutputsSpec:
     diagnostics: DiagnosticsOutput | None = None
     report_html: ReportOutput | None = None
     backtest: BacktestOutput | None = None
+    empirical_bands: EmpiricalBandsOutput | None = None
+    heatmap: HeatmapOutput | None = None
+    alternatives: AlternativesOutput | None = None
+    excel: ExcelOutput | None = None
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -1093,8 +1282,18 @@ class OutputsSpec:
                 fields = fields["options"]
             if name == "backtest":
                 fields["benchmarks"] = [{"type": t, **kw} for t, kw in value.benchmarks]
+            fields.update(_none_sentinels(name, fields))
             out[name] = _plain({k: v for k, v in fields.items() if v is not None}) or True
         return out
+
+
+def _none_sentinels(name: str, fields: Mapping[str, Any]) -> dict[str, Any]:
+    """YAML spellings of the meaningful ``None`` options (``window: all``, ``smooth: none``)."""
+    if name == "empirical_bands" and fields.get("window") is None:
+        return {"window": "all"}
+    if name == "heatmap" and fields.get("smooth") is None:
+        return {"smooth": "none"}
+    return {}
 
 
 def _parse_outputs(raw: Any, issues: _Issues, base_dir: Path | None) -> OutputsSpec:
@@ -1105,6 +1304,10 @@ def _parse_outputs(raw: Any, issues: _Issues, base_dir: Path | None) -> OutputsS
         "diagnostics": lambda o, p: _parse_diagnostics(o, p, issues),
         "report_html": lambda o, p: _parse_report(o, p, issues, base_dir),
         "backtest": lambda o, p: _parse_backtest(o, p, issues),
+        "excel": lambda o, p: _parse_excel_output(o, p, issues, base_dir),
+        "empirical_bands": lambda o, p: _parse_bands(o, p, issues),
+        "heatmap": lambda o, p: _parse_heatmap(o, p, issues),
+        "alternatives": lambda o, p: _parse_alternatives(o, p, issues),
     }
     fields: dict[str, Any] = {}
     for name, (options, path) in entries.items():
@@ -1197,6 +1400,19 @@ def _parse_report(
     )
 
 
+def _parse_excel_output(
+    options: dict[str, Any], path: str, issues: _Issues, base_dir: Path | None
+) -> ExcelOutput:
+    issues.check_keys(options, ("path",), path)
+    target = _string(options.get("path"), f"{path}.path", issues)
+    if target is None:
+        return ExcelOutput()
+    file = Path(target).expanduser()
+    if not file.is_absolute() and base_dir is not None:
+        file = base_dir / file
+    return ExcelOutput(path=file)
+
+
 def _parse_backtest(options: dict[str, Any], path: str, issues: _Issues) -> BacktestOutput | None:
     issues.check_keys(options, _BACKTEST_KEYS, path)
     start = _date(options.get("start"), f"{path}.start", issues)
@@ -1223,10 +1439,127 @@ def _parse_backtest(options: dict[str, Any], path: str, issues: _Issues) -> Back
         )
         or 1,
         "model": _mapping(options.get("model"), f"{path}.model", issues) or {},
+        "metrics": _parse_metrics(options.get("metrics"), f"{path}.metrics", issues),
+        "periods": _parse_periods(options.get("periods"), f"{path}.periods", issues),
     }
     if start is None or end is None:
         return None
     return BacktestOutput(start=start, end=end, **fields)
+
+
+def _parse_metrics(value: Any, path: str, issues: _Issues) -> tuple[str, ...]:
+    """``outputs.backtest.metrics``: names of :meth:`BacktestResults.metrics`."""
+    default = ("rmsfe", "mae", "bias", "n")
+    names = _str_list(value, path, issues)
+    if not names:
+        return default
+    unknown = [n for n in names if n not in _BACKTEST_METRICS]
+    if unknown:
+        issues.add(path, f"unknown metrics {unknown}; allowed: {', '.join(_BACKTEST_METRICS)}")
+        return default
+    return names
+
+
+def _parse_periods(
+    value: Any, path: str, issues: _Issues
+) -> str | dict[str, list[str | None]] | None:
+    """``outputs.backtest.periods``: a shortcut or ``{label: [first, last]}``."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if value.lower() not in _PERIOD_SHORTCUTS:
+            issues.add(path, f"must be 'covid', 'ex-covid' or a mapping, got {value!r}")
+            return None
+        return value.lower()
+    periods = _mapping(value, path, issues)
+    if not periods:
+        return None
+    out: dict[str, list[str | None]] = {}
+    for label, bounds in periods.items():
+        where = f"{path}.{label}"
+        if not isinstance(bounds, Sequence) or isinstance(bounds, str) or len(bounds) != 2:
+            issues.add(where, "must be a pair [first, last] of target periods (null = open)")
+            continue
+        out[label] = [_period(b, where, issues) for b in bounds]
+    return out or None
+
+
+def _choice(value: Any, path: str, issues: _Issues, choices: Sequence[str], default: Any) -> Any:
+    if value is None:
+        return default
+    if value not in choices:
+        issues.add(path, f"must be one of {', '.join(choices)}, got {value!r}")
+        return default
+    return value
+
+
+def _parse_bands(options: dict[str, Any], path: str, issues: _Issues) -> EmpiricalBandsOutput:
+    issues.check_keys(options, _BANDS_KEYS, path)
+    levels = options.get("levels", (0.575, 0.68, 0.9))
+    if isinstance(levels, int | float) and not isinstance(levels, bool):
+        levels = [levels]
+    if not isinstance(levels, Sequence) or not all(
+        isinstance(v, int | float) and not isinstance(v, bool) and 0 < v < 1 for v in levels
+    ):
+        issues.add(f"{path}.levels", "must be a list of numbers in (0, 1)")
+        levels = (0.575, 0.68, 0.9)
+    window = options.get("window", "10Y")
+    return EmpiricalBandsOutput(
+        method=_choice(options.get("method"), f"{path}.method", issues, _BANDS_METHODS, "mae"),
+        window=None if window in (None, False, "all") else str(window),
+        levels=tuple(float(v) for v in levels),
+        outliers=_choice(
+            options.get("outliers"), f"{path}.outliers", issues, ("exclude", "winsorize"), None
+        ),
+        min_errors=_integer(
+            options.get("min_errors"), f"{path}.min_errors", issues, minimum=1, default=8
+        )
+        or 8,
+        availability=_choice(
+            options.get("availability"),
+            f"{path}.availability",
+            issues,
+            ("release", "period_end"),
+            "release",
+        ),
+    )
+
+
+def _parse_heatmap(options: dict[str, Any], path: str, issues: _Issues) -> HeatmapOutput:
+    issues.check_keys(options, _HEATMAP_KEYS, path)
+    by = _choice(
+        options.get("by"), f"{path}.by", issues, ("series", "category", "block", "frequency"), None
+    )
+    smooth = options.get("smooth", "mm")
+    if smooth in (None, False, "none"):
+        smooth = None
+    else:
+        smooth = _choice(smooth, f"{path}.smooth", issues, ("mm",), "mm")
+    return HeatmapOutput(
+        by=None if by == "series" else by,
+        smooth=smooth,
+        window=_integer(options.get("window"), f"{path}.window", issues, minimum=2),
+        last=_integer(options.get("last"), f"{path}.last", issues, minimum=1, default=24) or 24,
+    )
+
+
+def _parse_alternatives(options: dict[str, Any], path: str, issues: _Issues) -> AlternativesOutput:
+    issues.check_keys(options, _ALTERNATIVES_KEYS, path)
+    drop = options.get("drop", (1, 2))
+    if isinstance(drop, int) and not isinstance(drop, bool):
+        drop = [drop]
+    if (
+        not isinstance(drop, Sequence)
+        or not drop
+        or not all(isinstance(d, int) and not isinstance(d, bool) and d >= 1 for d in drop)
+    ):
+        issues.add(f"{path}.drop", "must be a positive integer or a list of them")
+        drop = (1, 2)
+    return AlternativesOutput(
+        by=_choice(options.get("by"), f"{path}.by", issues, ("category", "block"), "category"),
+        drop=tuple(int(d) for d in drop),
+        refit=_boolean(options.get("refit"), f"{path}.refit", issues, default=True),
+    )
 
 
 def _parse_benchmarks(
@@ -1642,6 +1975,10 @@ def _check_target(target: str | None, data: DataSpec | None, issues: _Issues) ->
 
 
 def _check_outputs(outputs: OutputsSpec, model: ModelSpec | None, issues: _Issues) -> None:
+    if outputs.empirical_bands is not None and outputs.backtest is None:
+        issues.add(
+            "outputs.empirical_bands", "needs outputs.backtest (the bands use its past errors)"
+        )
     if model is None or model.type != "TwoStepDFM":
         return
     aggregate = model.options.get("aggregate", "factors")

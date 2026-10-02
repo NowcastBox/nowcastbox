@@ -12,17 +12,23 @@ Each cell of the panel (series x base period) is classified as
 ``no_slot``
     not a storage slot of the series (e.g. the first two months of a quarter for a
     quarterly series).
+
+:func:`released_share_table` and :func:`plot_released_share` summarise the same
+information for one target period: the share of its observations already released at
+the vintage of the panel (ECB WP 3004, Linzenich & Meunier 2024), by series or group
+(``results.plot("released_share")``).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 
 from nowcastbox.core.data import MixedFrequencyData
-from nowcastbox.core.results import NowcastResults
+from nowcastbox.core.results import NowcastResults, register_plot
 from nowcastbox.visualization._common import (
     finish_mpl,
     finish_plotly,
@@ -36,7 +42,14 @@ from nowcastbox.visualization.themes import Theme
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-__all__ = ["AVAILABILITY_STATES", "data_availability", "plot_data_availability", "release_table"]
+__all__ = [
+    "AVAILABILITY_STATES",
+    "data_availability",
+    "plot_data_availability",
+    "plot_released_share",
+    "release_table",
+    "released_share_table",
+]
 
 AVAILABILITY_STATES: tuple[str, ...] = ("no_slot", "observed", "missing", "pending")
 """Codes ``0..3`` of :func:`data_availability`, in order."""
@@ -314,3 +327,204 @@ def _availability_mpl(
         axes.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0))
         finish_mpl(axes, theme, title=title, legend=False)
     return fig
+
+
+# ---------------------------------------------------------------------- released share
+def _results_period(results: NowcastResults) -> pd.Period:
+    """First target period after the last observation of the target (current nowcast)."""
+    estimate = results.estimate
+    last = results.nowcast["observed"].last_valid_index()
+    later = estimate.index if last is None else estimate.index[estimate.index > last]
+    if len(later) == 0:
+        raise ValueError("No target period after the last observation; pass period=.")
+    return later[0]
+
+
+def released_share_table(
+    data: MixedFrequencyData | NowcastResults,
+    period: pd.Period | str | None = None,
+    *,
+    by: str | Mapping[str, str | Sequence[str]] | None = "category",
+    weights: Mapping[str, float] | pd.Series | None = None,
+    as_of: pd.Timestamp | str | None = None,
+    series: Sequence[str] | None = None,
+) -> pd.DataFrame:
+    """Share of the observations of a target period already released, by group.
+
+    Thin wrapper of :meth:`~nowcastbox.core.data.MixedFrequencyData.released_share` that
+    also accepts fitted results: then the panel is the estimation data, the target is
+    left out (unless ``series`` lists it) and ``period`` defaults to the current nowcast
+    period (the first target period after its last observation).
+
+    Parameters
+    ----------
+    data : MixedFrequencyData or NowcastResults
+        Panel (a vintage), or results carrying their estimation data.
+    period : pandas.Period or str, optional
+        Target period (required for a panel).
+    by : {"series", "category", "block", "frequency"}, mapping or None, default "category"
+        Grouping of the rows.
+    weights : mapping or pandas.Series, optional
+        Non-negative weights of the series.
+    as_of : Timestamp or str, optional
+        Information date (applies ``as_of`` to the panel first).
+    series : sequence of str, optional
+        Subset of series.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns ``released``, ``expected``, ``weight``, ``share``; last row ``"total"``.
+
+    Raises
+    ------
+    ValueError
+        Missing ``period`` for a panel, results without data or without a period after
+        the last observation; see ``released_share``.
+    TypeError
+        Unsupported input type.
+
+    Examples
+    --------
+    >>> import numpy as np, pandas as pd
+    >>> from nowcastbox.core.data import MixedFrequencyData
+    >>> idx = pd.period_range("2020-01", periods=6, freq="M")
+    >>> df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0, np.nan, np.nan]}, index=idx)
+    >>> table = released_share_table(MixedFrequencyData(df, "M"), "2020Q2", by=None)
+    >>> round(float(table.loc["total", "share"]), 4)
+    0.3333
+    """
+    panel = _panel(data)
+    if isinstance(data, NowcastResults):
+        period = _results_period(data) if period is None else period
+        if series is None:
+            series = [c for c in panel.columns if c != data.target]
+    if period is None:
+        raise ValueError("period is required for a MixedFrequencyData panel.")
+    return panel.released_share(period, by=by, weights=weights, series=series, as_of=as_of)
+
+
+def plot_released_share(
+    data: MixedFrequencyData | NowcastResults,
+    period: pd.Period | str | None = None,
+    *,
+    by: str | Mapping[str, str | Sequence[str]] | None = "category",
+    weights: Mapping[str, float] | pd.Series | None = None,
+    as_of: pd.Timestamp | str | None = None,
+    series: Sequence[str] | None = None,
+    backend: str = "plotly",
+    theme: Theme | str | None = None,
+    title: str | None = None,
+    ax: Axes | None = None,
+    figsize: tuple[float, float] | None = None,
+) -> Any:
+    """Bar chart of the share of a target period's data already released, by group.
+
+    Parameters
+    ----------
+    data : MixedFrequencyData or NowcastResults
+        Panel (a vintage), or results carrying their estimation data.
+    period : pandas.Period or str, optional
+        Target period (default for results: the current nowcast period).
+    by : {"series", "category", "block", "frequency"}, mapping or None, default "category"
+        Grouping of the bars.
+    weights : mapping or pandas.Series, optional
+        Non-negative weights of the series.
+    as_of : Timestamp or str, optional
+        Information date.
+    series : sequence of str, optional
+        Subset of series.
+    backend : {"plotly", "matplotlib"}, default "plotly"
+        Plotting library.
+    theme : Theme or str, optional
+        Visual theme.
+    title : str, optional
+        Title (default: ``"Data released for <period>: <total>%"``).
+    ax : matplotlib.axes.Axes, optional
+        Axes to draw on (Matplotlib only).
+    figsize : tuple of float, optional
+        Matplotlib figure size.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure or matplotlib.figure.Figure
+        The figure (one bar per group, in percent; the total as a dashed line).
+
+    Raises
+    ------
+    ValueError
+        See :func:`released_share_table`; unknown backend.
+    TypeError
+        Unsupported input type.
+
+    Examples
+    --------
+    >>> import numpy as np, pandas as pd
+    >>> from nowcastbox.core.data import MixedFrequencyData
+    >>> idx = pd.period_range("2020-01", periods=6, freq="M")
+    >>> df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0, np.nan, np.nan]}, index=idx)
+    >>> fig = plot_released_share(MixedFrequencyData(df, "M"), "2020Q2", by=None)
+    >>> fig.data[0].type
+    'bar'
+    """
+    th, be = resolve(theme, backend, ax)
+    if period is None and isinstance(data, NowcastResults):
+        period = _results_period(data)
+    table = released_share_table(data, period, by=by, weights=weights, as_of=as_of, series=series)
+    total = float(table["share"].to_numpy(dtype=float)[-1])
+    bars = table.drop(index="total")
+    if title is None:
+        title = f"Data released for {period}: {100 * total:.0f}%"
+    if be == "plotly":
+        return _released_plotly(bars, total, th, title)
+    return _released_mpl(bars, total, th, title, ax, figsize)
+
+
+def _released_plotly(bars: pd.DataFrame, total: float, theme: Theme, title: str) -> Any:
+    import plotly.graph_objects as go
+
+    labels = [f"{r}/{e}" for r, e in zip(bars["released"], bars["expected"], strict=True)]
+    fig = new_plotly_figure()
+    fig.add_trace(
+        go.Bar(
+            x=100 * bars["share"].to_numpy(dtype=float),
+            y=[str(i) for i in bars.index],
+            orientation="h",
+            marker_color=theme.color(0),
+            text=labels,
+            textposition="auto",
+            name="Released",
+            hovertemplate="%{y}: %{x:.0f}% (%{text})<extra></extra>",
+        )
+    )
+    if np.isfinite(total):
+        fig.add_vline(x=100 * total, line_dash="dash", line_color=theme.neutral_color)
+    fig = finish_plotly(fig, theme, title=title, xlabel="% released", showlegend=False)
+    fig.update_xaxes(range=[0, 100])
+    fig.update_yaxes(autorange="reversed")
+    return fig
+
+
+def _released_mpl(
+    bars: pd.DataFrame,
+    total: float,
+    theme: Theme,
+    title: str,
+    ax: Axes | None,
+    figsize: tuple[float, float] | None,
+) -> Any:
+    size = figsize or (7.0, max(2.5, 0.4 * len(bars) + 1.5))
+    with mpl_context(theme):
+        fig, axes = new_axes(ax, theme, size)
+        positions = np.arange(len(bars))
+        axes.barh(positions, 100 * bars["share"].to_numpy(dtype=float), color=theme.color(0))
+        axes.set_yticks(positions, [str(i) for i in bars.index])
+        axes.invert_yaxis()
+        axes.set_xlim(0, 100)
+        if np.isfinite(total):
+            axes.axvline(100 * total, linestyle="--", color=theme.neutral_color)
+        finish_mpl(axes, theme, title=title, xlabel="% released", legend=False)
+    return fig
+
+
+register_plot("released_share")(plot_released_share)

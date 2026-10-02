@@ -56,7 +56,7 @@ from nowcastbox.core.exceptions import NowcastDataError
 from nowcastbox.core.frequency import Frequency
 
 if TYPE_CHECKING:  # analysis modules depend on core, never the reverse at runtime
-    from nowcastbox.density import NowcastDistribution
+    from nowcastbox.density import EmpiricalQuantileDistribution, NowcastDistribution
     from nowcastbox.diagnostics import DiagnosticsReport
     from nowcastbox.news import LevelContributions, NewsResults, NowcastTracker
 
@@ -655,33 +655,54 @@ class NowcastResults:
 
         return level_contributions(self, data, target_period, **kwargs)
 
-    def distribution(self, **kwargs: Any) -> NowcastDistribution:
+    def distribution(self, **kwargs: Any) -> NowcastDistribution | EmpiricalQuantileDistribution:
         """Predictive distribution of the nowcast (density nowcast, I5).
 
         Delegates to :func:`nowcastbox.density.nowcast_distribution`: Gaussian
         filtering uncertainty, plus parameter uncertainty from a bootstrap when
-        ``n_boot > 0``.
+        ``n_boot > 0``. With ``method="empirical"`` it delegates instead to
+        :func:`nowcastbox.density.empirical_bands`: bands from the past errors of a
+        backtest at the same horizon (Reifschneider-Tulip / ECB style).
 
         Parameters
         ----------
         **kwargs
             Options of :func:`~nowcastbox.density.nowcast_distribution` (``n_boot``,
-            ``method``, ``periods``, ``random_state``, ``n_jobs``...).
+            ``method``, ``periods``, ``random_state``, ``n_jobs``...). With
+            ``method="empirical"``: ``backtest`` (required), ``empirical_method``
+            (``"mae"``, ``"rmse"`` or ``"quantile"``, passed as ``method``) and the
+            other options of :func:`~nowcastbox.density.empirical_bands` (``vintage``,
+            ``window``, ``levels``, ``outliers``...).
 
         Returns
         -------
-        NowcastDistribution
-            Distribution with quantiles, intervals, pdf/cdf, sampling and ``plot()``.
+        NowcastDistribution or EmpiricalQuantileDistribution
+            Distribution with quantiles, intervals, sampling and ``plot()``
+            (an :class:`~nowcastbox.density.EmpiricalQuantileDistribution` only for
+            ``method="empirical", empirical_method="quantile"``).
 
         Raises
         ------
         NowcastDataError
-            If the results have no standard deviation for the requested periods.
+            If the results have no standard deviation for the requested periods (or
+            no period has enough past errors).
+        ValueError
+            If ``method="empirical"`` is given without ``backtest``.
 
         Examples
         --------
         >>> res.distribution(n_boot=199, random_state=0).interval(0.9)  # doctest: +SKIP
+        >>> res.distribution(method="empirical", backtest=bt).interval(0.9)  # doctest: +SKIP
         """
+        if kwargs.get("method") == "empirical":
+            from nowcastbox.density import empirical_bands
+
+            options = {k: v for k, v in kwargs.items() if k != "method"}
+            backtest = options.pop("backtest", None)
+            if backtest is None:
+                raise ValueError('distribution(method="empirical") requires backtest=...')
+            options["method"] = options.pop("empirical_method", "mae")
+            return empirical_bands(self, backtest, **options)
         from nowcastbox.density import nowcast_distribution
 
         return nowcast_distribution(self, **kwargs)

@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Phase 1 of the parity plan with the ECB Nowcasting Toolbox (Linzenich & Meunier, 2024,
+ECB WP 3004): evaluation and conjunctural outputs.
+
+### Added
+
+- Forecast directional accuracy (FDA): `evaluation.directional_accuracy`,
+  `directional_changes` and the `DIRECTIONAL_METRICS` registry; `"fda"` is accepted by
+  `BacktestResults.metrics`. The previous value is the one available at the vintage
+  (new optional `previous_actual` column of the backtest table) or, with
+  `previous="final"`, the final value.
+- `evaluation.pesaran_timmermann` / `PesaranTimmermannResult` (Pesaran & Timmermann,
+  1992) and `BacktestResults.directional_accuracy(horizon=..., test=True)` (FDA and PT
+  p-value by horizon and model).
+- Accuracy by sub-period: `periods=` in `BacktestResults.metrics`, `rmsfe_by_horizon`,
+  `relative_to`, `diebold_mariano`, `clark_west`, `giacomini_white`, `mcs` and
+  `directional_accuracy` (`{label: (first, last)}`, or the `"covid"`/`"ex-covid"`
+  shortcuts built by `evaluation.covid_periods`); `BacktestResults.split_periods`.
+- Empirical error bands (Reifschneider & Tulip, 2019; ECB, 2009):
+  `density.empirical_bands` (past backtest errors at the same horizon, rolling 10-year
+  window, `method="mae" | "rmse" | "quantile"`, levels 57.5 %, 68 % and 90 % by default,
+  outlier exclusion/winsorizing, only errors known at the vintage),
+  `backtest_empirical_bands`, `empirical_error_scales`, `available_errors`,
+  `EmpiricalGaussianDistribution` (a `NowcastDistribution` whose `to_frame()`,
+  `fan_chart_frame()` and `plot()` default to the band levels) and
+  `EmpiricalQuantileDistribution`; `NowcastResults.distribution(method="empirical",
+  backtest=...)`, `results.plot("density", method="empirical", backtest=...)` and
+  `visualization.plot_empirical_bands`.
+- Indicator z-score heatmap (WP 3004 §3.4): `diagnostics.indicator_zscores` /
+  `IndicatorZScores` (Mariano-Murasawa 1-2-3-2-1 smoothing of monthly series, full-sample
+  or rolling moments, groups by category/block/frequency/mapping, `as_of=` without
+  look-ahead), `smooth_series`, `visualization.plot_indicator_heatmap`, `heatmap_table`
+  and `results.plot("indicator_heatmap")`.
+- Share of data already released: `MixedFrequencyData.released_share(period, by=,
+  weights=, series=, as_of=)`, `visualization.released_share_table`,
+  `plot_released_share`, `results.plot("released_share")` and a `released_share` column
+  in `nowcast_tracker`.
+- Nowcasts of alternative models without one or two groups of indicators (WP 3004
+  §3.5): `experiment.alternative_models` / `AlternativeNowcasts` (`table()`, `range()`,
+  `summary()`, `plot()`), re-estimated (`refit=True`, parallel with joblib) or
+  re-filtered with the base parameters (`refit=False`).
+- Excel templates: pipeline data source `excel` (sheets `monthly`, `quarterly`,
+  `annual`, `metadata` with transformation codes 0-7), `pipeline.data.read_excel_panel`,
+  `write_excel_panel`, `write_run_excel`, `example_workbook_path`, the bundled
+  `pipeline/templates/example.xlsx`, `nowcastbox init --excel [--example]` and the
+  `excel` output. New optional extra `nowcastbox[excel]` (`openpyxl`).
+- Pipeline outputs `empirical_bands`, `heatmap` and `alternatives`, and `metrics`/`periods`
+  options of `outputs.backtest` (accuracy table `PipelineRun.backtest_metrics`); the
+  snapshot and the Excel workbook store the new tables and `PipelineRun.excel_paths`
+  lists the workbooks written.
+- `NowcastReport(bands=, alternatives=, heatmap=, backtest_metrics=,
+  released_share=True)`: empirical-band tiles and fan chart, range of the alternative
+  nowcasts, share of the nowcast period's data released, indicator heatmap and accuracy
+  table.
+- Top-level `nb.empirical_bands`, `nb.indicator_zscores`, `nb.alternative_models`,
+  `nb.AlternativeNowcasts` and `nb.pesaran_timmermann`.
+
+### Changed
+
+- `BacktestResults.directional_accuracy()` keeps rows with a missing horizon value (for
+  example an unknown `days_to_release`) as their own group, as `metrics()` does.
+- `nowcast_tracker`'s `released_share` column counts only the fitted model's predictors
+  (its estimation panel without the target), so a formula fit on a subset of the panel is
+  not diluted by series the model does not use.
+- `alternative_models(..., refit=False)` accepts fitted results with a newer data
+  vintage: the base row and every alternative are re-filtered on that same information
+  set, and series outside the fitted model are ignored. A `{group: "series"}` mapping
+  with one series per group is also accepted.
+- `NowcastResults.distribution()` is annotated as returning
+  `NowcastDistribution | EmpiricalQuantileDistribution`.
+- Wheels ship `pipeline/templates/*.xlsx`.
+
 ## [0.1.2] - 2026-10-02
 
 ### Changed

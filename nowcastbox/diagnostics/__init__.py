@@ -10,6 +10,9 @@
   loadings, publication delays;
 - :func:`residual_diagnostics` - Ljung-Box and Jarque-Bera tests of idiosyncratic and
   bridge residuals;
+- :func:`indicator_zscores` - z-scores of the (Mariano-Murasawa smoothed) indicators by
+  series and group, the conjunctural heatmap of ECB WP 3004 (no look-ahead with
+  ``as_of=``);
 - :func:`run_diagnostics` - everything above for fitted results, in a
   :class:`DiagnosticsReport` with tidy DataFrames and ``summary()``.
 
@@ -55,13 +58,21 @@ from nowcastbox.diagnostics.stability import (
     loading_stability_test,
     sup_break_pvalue,
 )
+from nowcastbox.diagnostics.zscores import (
+    MM_SMOOTHING_WEIGHTS,
+    IndicatorZScores,
+    indicator_zscores,
+    smooth_series,
+)
 
 __all__ = [
     "COMPONENTS",
+    "MM_SMOOTHING_WEIGHTS",
     "ConvergenceDiagnostics",
     "DataQualityReport",
     "DiagnosticsReport",
     "FactorContribution",
+    "IndicatorZScores",
     "LoadingStabilityResult",
     "ResidualDiagnostics",
     "adjust_pvalues",
@@ -71,6 +82,7 @@ __all__ = [
     "em_convergence",
     "factor_contributions",
     "idiosyncratic_residuals",
+    "indicator_zscores",
     "jarque_bera",
     "ljung_box",
     "loading_stability_test",
@@ -78,5 +90,6 @@ __all__ = [
     "projection_residuals",
     "residual_diagnostics",
     "run_diagnostics",
+    "smooth_series",
     "sup_break_pvalue",
 ]

@@ -6,7 +6,7 @@
 | Versão de partida | `nowcastbox` 0.1.2 (PyPI, DOI 10.5281/zenodo.23102804) |
 | Versões-alvo | 0.2.0 (Fase 1), 0.3.0 (Fase 2), 0.4.0 (Fase 3) |
 | Data do documento | 2026-10-02 |
-| Status | Planejamento |
+| Status | **Fase 1 concluída** (integrada na branch `ecb-parity`, 2026-10-02; release 0.2.0 ainda não publicado); Fases 2–3 em planejamento |
 
 ---
 
@@ -32,19 +32,19 @@ passo de integração de cada fase.
 
 ### Visão geral
 
-| # | Item | Fase | Esforço | Módulos principais |
-|---|---|---|---|---|
-| 1 | FDA (acurácia direcional) + teste de Pesaran-Timmermann | 1 | S | `evaluation/metrics.py`, `evaluation/tests.py`, `evaluation/backtest.py` |
-| 2 | Métricas por subperíodo | 1 | S | `evaluation/backtest.py` |
-| 3 | Bandas de erro empírico (Reifschneider-Tulip) | 1 | S–M | `density/empirical.py` (novo), `evaluation/backtest.py` |
-| 4 | Heatmap de z-scores dos indicadores | 1 | S | `diagnostics/heatmap.py` (novo), `visualization/` |
-| 5 | Parcela dos dados já divulgados | 1 | S | `core/data.py` ou `visualization/data_flow.py` |
-| 6 | Nowcasts de modelos alternativos (sem 1–2 grupos) | 1 | S–M | `experiment/alternatives.py` (novo) |
-| 7 | Templates Excel | 1 | S | `pipeline/data.py`, `pipeline/templates/` |
-| 8 | Pré-seleção completa (SIS, LARS, score agregado) | 2 | M | `selection/targeted.py`, `selection/preselection.py` (novo) |
-| 9 | Busca aleatória de especificações + robustez à Covid | 2 | M | `selection/search.py` (novo), `experiment/` |
-| 10 | Combinação de bridge equations | 2 | M | `models/bridge_combination.py` (novo), `benchmarks/` |
-| 11 | BVAR grande (Cimadomo et al. 2022) | 3 | L | `models/bvar.py` (novo), `models/_bvar_prior.py` (novo) |
+| # | Item | Fase | Esforço | Módulos principais | Situação |
+|---|---|---|---|---|---|
+| 1 | FDA (acurácia direcional) + teste de Pesaran-Timmermann | 1 | S | `evaluation/metrics.py`, `evaluation/tests.py`, `evaluation/backtest.py` | **Concluído** |
+| 2 | Métricas por subperíodo | 1 | S | `evaluation/backtest.py` | **Concluído** |
+| 3 | Bandas de erro empírico (Reifschneider-Tulip) | 1 | S–M | `density/empirical.py` (novo) | **Concluído** |
+| 4 | Heatmap de z-scores dos indicadores | 1 | S | `diagnostics/zscores.py` (novo), `visualization/heatmap.py` (novo) | **Concluído** |
+| 5 | Parcela dos dados já divulgados | 1 | S | `core/data.py`, `visualization/data_flow.py`, `news/tracker.py` | **Concluído** |
+| 6 | Nowcasts de modelos alternativos (sem 1–2 grupos) | 1 | S–M | `experiment/alternatives.py` (novo) | **Concluído** |
+| 7 | Templates Excel | 1 | S | `pipeline/data.py`, `pipeline/spec.py`, `pipeline/templates/example.xlsx`, `cli/main.py` | **Concluído** |
+| 8 | Pré-seleção completa (SIS, LARS, score agregado) | 2 | M | `selection/targeted.py`, `selection/preselection.py` (novo) | Planejado |
+| 9 | Busca aleatória de especificações + robustez à Covid | 2 | M | `selection/search.py` (novo), `experiment/` | Planejado |
+| 10 | Combinação de bridge equations | 2 | M | `models/bridge_combination.py` (novo), `benchmarks/` | Planejado |
+| 11 | BVAR grande (Cimadomo et al. 2022) | 3 | L | `models/bvar.py` (novo), `models/_bvar_prior.py` (novo) | Planejado |
 
 Esforço: S ≈ até 1 dia, M ≈ 2–5 dias, L ≈ 2–3 semanas (inclui testes, docs e validação).
 
@@ -196,6 +196,24 @@ inexistente → erro.
 sem `openpyxl`.
 
 ### Integração da Fase 1
+
+> **Situação (2026-10-02): concluída**, exceto os itens de paper e o release (ver abaixo).
+> Feito: `nb.empirical_bands`, `nb.indicator_zscores`, `nb.alternative_models`,
+> `nb.AlternativeNowcasts`, `nb.pesaran_timmermann` no topo; plots `"indicator_heatmap"`,
+> `"released_share"` e `"density"` com `method="empirical"`; relatório HTML com bandas
+> empíricas (tiles + leque 57,5/68/90 %), modelos alternativos, parcela divulgada (por
+> categoria, padrão), heatmap (`heatmap=`) e tabela de acurácia (`backtest_metrics=`);
+> pipeline com saídas `empirical_bands`, `heatmap`, `alternatives`, `excel` (escrita de
+> fato do workbook) e opções `metrics`/`periods` em `outputs.backtest` (as chaves
+> `evaluation.periods`/`evaluation.metrics` propostas abaixo ficaram dentro de
+> `outputs.backtest`, que é onde o backtest é configurado); `CHANGELOG`, `FONTES`, nav
+> do MkDocs, `CONTRATOS`. Pendentes: tabelas do paper do PIB / ilustração do JSS e o
+> release 0.2.0 (bump de versão e tag ficam para a publicação).
+>
+> Decisões em aberto resolvidas: (1) FDA com o valor anterior disponível na vintage,
+> `previous="final"` como opção; (2) bandas com 57,5 % + 68 % + 90 % por padrão; (3) LARS
+> com implementação própria (Fase 2); (4) Excel via extra opcional `[excel]`
+> (`openpyxl`); (5) BVAR neste ciclo de desenvolvimento (Fase 3).
 
 - `NowcastResults`: métodos/plots novos (`plot("indicator_heatmap")`, `distribution(method=
   "empirical")`).

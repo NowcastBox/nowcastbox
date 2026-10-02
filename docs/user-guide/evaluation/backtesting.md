@@ -71,6 +71,62 @@ fig = nb.visualization.plot_rmsfe_by_horizon(out.rmsfe_by_horizon())
 out.to_parquet("backtest.parquet")     # needs the [data] extra (pyarrow)
 ```
 
+## Directional accuracy
+
+Besides the size of the errors, `BacktestResults` measures whether the forecasts get the
+direction of change right (forecast directional accuracy, FDA) and tests it against
+chance with Pesaran & Timmermann (1992):
+
+```python
+out.directional_accuracy()                       # fda, n_obs, statistic, pvalue by horizon
+out.directional_accuracy("kind", previous="final", test=False)
+out.metrics("kind", metrics=("rmsfe", "fda", "n"))
+```
+
+The previous value $y^p_t$ is stored in the column `previous_actual`: the value of the
+period before the target period **as known at the vintage date** — in real time, the
+release available then. When that period is not yet published (e.g. the nowcast made in
+the first month of a quarter, before the previous quarter's GDP release, or a one-quarter
+ahead forecast), it is the last released value of the target, so the comparison uses
+only information available to the forecaster. `previous="final"` uses the final value
+of the previous period instead; it also works for forecast tables written by older
+versions, which have no `previous_actual` column.
+
+## Accuracy by sub-period
+
+Every table and test of `BacktestResults` — `metrics`, `rmsfe_by_horizon`,
+`relative_to`, `directional_accuracy`, `diebold_mariano`, `clark_west`,
+`giacomini_white` and `mcs` — accepts `periods=`, a mapping from labels to
+`(first, last)` target periods (`None` leaves an end open, a list of pairs is a union).
+The forecasts are filtered by target period, the common sample is formed within each
+sub-period and the result gains an outer `period` level (`mcs` returns a dict):
+
+```python
+periods = {"2018": ("2018Q1", "2018Q4"), "2019": ("2019Q1", None)}
+out.metrics("kind", periods=periods)
+out.relative_to("AR", horizon=None, periods=periods)
+out.diebold_mariano("AR", horizon="kind", aggregate="target_period", periods=periods)
+```
+
+`periods="covid"` is a shortcut for the pre-Covid, Covid, post-Covid and ex-Covid
+samples: the pandemic window of the robust DFM (March 2020 to December 2021) converted
+to target periods, i.e. 2020Q1-2021Q4 for quarterly GDP; `periods="ex-covid"` keeps only
+the sample without the pandemic. The bounds are those of `covid_periods`:
+
+```python
+nb.evaluation.covid_periods("Q")
+```
+
+<!-- skip-test -->
+```python
+gdp_backtest.metrics("kind", ("rmsfe", "fda"), periods="covid")
+gdp_backtest.mcs(aggregate="target_period", periods="ex-covid")["ex-Covid"].included
+```
+
+Use `split_periods(periods)` to get one `BacktestResults` per sub-period. With
+`previous="final"`, the first target period of a sub-period still compares with the
+(outside) previous period.
+
 ## Real-time evaluation with real vintages
 
 With a `VintageStore` each vintage uses the values **actually published** at that date,
@@ -111,6 +167,8 @@ connectors with ALFRED-style vintages or combine `VintageStore.from_calendar(pan
 - Evaluate on a **common sample** of target periods across models (the default).
 - Report accuracy **by horizon**: nowcasts improve as the quarter progresses; averages
   over horizons hide that.
+- Report accuracy **by sub-period** too (`periods="covid"`): a few pandemic quarters can
+  dominate RMSFEs and test statistics.
 - Include simple benchmarks (AR, random walk, mean) and the relevant competitor
   (bridge, MIDAS, survey expectations).
 - Keep the evaluation period out of any model-selection step.

@@ -179,3 +179,29 @@ mesma função de verossimilhança (1e-12); ótimo do statsmodels −9347,64; no
   MANIFEST.in do sdist; I1 só no `MixedFreqDFM` (two-step/benchmarks exigem razões fixas);
   múltiplos máximos locais no EM com vários blocos; vintages do IBC-Br e conector Focus (I8).
 
+
+## Paridade com o *ECB Nowcasting Toolbox* — Fase 1 (0.2.0, integrada em 2026-10-02)
+
+Plano: `PLANO_PARIDADE_ECB.md`. Itens 1–7 concluídos e integrados na branch `ecb-parity`
+(versão ainda 0.1.2; bump/tag/PyPI ficam para a publicação da 0.2.0).
+
+| Item | Onde |
+|---|---|
+| 1. FDA + Pesaran-Timmermann | `evaluation/metrics.py`, `evaluation/tests.py`, `BacktestResults.directional_accuracy`, `metrics(..., "fda")` (coluna `previous_actual`; `previous="vintage"\|"final"`) |
+| 2. Métricas por subperíodo | `periods=` em `metrics`/`rmsfe_by_horizon`/`relative_to`/`diebold_mariano`/`clark_west`/`giacomini_white`/`mcs`/`directional_accuracy`; `covid_periods`, `split_periods` |
+| 3. Bandas de erro empírico | `density/empirical.py` (`empirical_bands`, 57,5/68/90 %), `distribution(method="empirical")`, `plot("density", method="empirical")` |
+| 4. Heatmap de z-scores | `diagnostics/zscores.py`, `visualization/heatmap.py`, `plot("indicator_heatmap")` |
+| 5. Parcela de dados divulgados | `MixedFrequencyData.released_share`, `visualization/data_flow.py`, coluna `released_share` do tracker |
+| 6. Modelos alternativos | `experiment/alternatives.py` (`alternative_models`, `refit=True\|False`) |
+| 7. Templates Excel | `pipeline/data.py`, fonte/saída `excel`, `templates/example.xlsx`, `nowcastbox init --excel`, extra `[excel]` |
+| Integração | topo (`nb.empirical_bands`, `nb.indicator_zscores`, `nb.alternative_models`, `nb.AlternativeNowcasts`, `nb.pesaran_timmermann`), registro de plots, relatório HTML (bandas, alternativos, parcela divulgada, heatmap, tabela de acurácia), pipeline (`empirical_bands`, `heatmap`, `alternatives`, `excel`, `backtest.metrics`/`periods`), docs (4 páginas novas + seções), `CHANGELOG`, `FONTES`, `CONTRATOS` |
+
+Portões na integração: `pytest -m "not slow and not network" -n auto --cov --cov-branch`
+**3576 passaram, 0 falharam**, cobertura total **99,88 %** (`core/` e `statespace/`
+100 %); testes `slow` das áreas novas (docs, densidade, avaliação, pipeline...) 49
+passaram; `ruff check`/`ruff format --check` limpos (309 arquivos); `pyright` 0 erros;
+`interrogate` 99,5 %; `bandit -ll` 0 médios/altos; `mkdocs build --strict` limpo.
+
+Pendências da Fase 1: tabelas do paper do PIB e ilustração no JSS; ajuste fino opcional
+(`min_members` nos z-scores de grupo, `window` dos z-scores em períodos da própria série,
+`@overload` em `NowcastResults.distribution`); release 0.2.0.

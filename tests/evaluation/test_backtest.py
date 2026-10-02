@@ -424,7 +424,13 @@ class TestResults:
 
     def test_frames(self, results) -> None:
         wide = results.to_frame(wide=True)
-        assert wide.columns.tolist() == ["AR", "BridgeBenchmark", "RandomWalk", "actual"]
+        assert wide.columns.tolist() == [
+            "AR",
+            "BridgeBenchmark",
+            "RandomWalk",
+            "actual",
+            "previous_actual",
+        ]
         assert len(wide) == len(results.forecasts) // 3
         assert results.to_frame().equals(results.forecasts)
         assert "n_forecasts" in repr(results)

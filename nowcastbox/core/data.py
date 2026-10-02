@@ -488,6 +488,106 @@ def _blocks_mapping(spec: object, columns: Sequence[str]) -> tuple[dict[str, Any
     return mapping, names
 
 
+_GROUPINGS = ("series", "category", "block", "frequency")
+"""Named groupings of :meth:`MixedFrequencyData.released_share` (plus mappings)."""
+
+
+def _mapping_groups(
+    names: Sequence[str], mapping: Mapping[str, str | Sequence[str]]
+) -> dict[str, list[str]]:
+    unknown = sorted(set(mapping) - set(names))
+    if unknown:
+        raise ValueError(f"Grouping given for unknown series {unknown}.")
+    groups: dict[str, list[str]] = {}
+    for name in names:
+        labels = mapping.get(name, "unassigned")
+        for label in [labels] if isinstance(labels, str) else list(labels):
+            groups.setdefault(str(label), []).append(name)
+    return groups
+
+
+def _series_groups(
+    metadata: Mapping[str, SeriesMetadata], by: str | Mapping[str, str | Sequence[str]] | None
+) -> dict[str, list[str]]:
+    """``{group: [series, ...]}`` in order of first appearance (internal, shared helper).
+
+    ``by`` is ``None``/``"series"`` (one group per series), ``"category"``
+    (``"uncategorized"`` when unset), ``"block"`` (a series in each of its blocks;
+    ``"unassigned"`` without blocks), ``"frequency"`` or a mapping
+    ``{series: group or [groups]}``.
+    """
+    names = list(metadata)
+    if by is None or by == "series":
+        return {name: [name] for name in names}
+    if isinstance(by, Mapping):
+        return _mapping_groups(names, by)
+    if by == "category":
+        labels = {
+            n: m.category.value if m.category else "uncategorized" for n, m in metadata.items()
+        }
+    elif by == "block":
+        labels = {n: list(m.blocks) or "unassigned" for n, m in metadata.items()}
+    elif by == "frequency":
+        labels = {n: m.frequency.label for n, m in metadata.items()}
+    else:
+        raise ValueError(f"by must be one of {_GROUPINGS}, a mapping or None; got {by!r}.")
+    return _mapping_groups(names, labels)
+
+
+def _period_counts(
+    panel: MixedFrequencyData, period: pd.Period | str
+) -> tuple[pd.Series, pd.Series]:
+    """Released and expected observations of each series inside ``period``."""
+    target = period if isinstance(period, pd.Period) else pd.Period(period)
+    base = panel.base_frequency
+    if Frequency.from_value(target.freqstr).is_higher_than(base):
+        raise NowcastDataError(
+            f"period {target} is of a higher frequency than the base grid ({base.label})."
+        )
+    grid = pd.period_range(
+        pd.Period(target.start_time, freq=base.pandas_freq),
+        pd.Period(target.end_time, freq=base.pandas_freq),
+        freq=base.pandas_freq,
+    )
+    grid = grid[np.asarray(grid.asfreq(target.freqstr, how="E") == target)]
+    observed = panel.to_frame().reindex(grid).notna()
+    expected, released = {}, {}
+    for name, meta in panel.metadata.items():
+        slots = is_period_end(grid, meta.frequency)
+        expected[name] = int(slots.sum())
+        released[name] = int((slots & observed[name].to_numpy()).sum())
+    return pd.Series(released, dtype=int), pd.Series(expected, dtype=int)
+
+
+def _share_weights(
+    expected: pd.Series, weights: Mapping[str, float] | pd.Series | None
+) -> pd.Series:
+    """Weights of each series (default: the number of expected observations)."""
+    if weights is None:
+        return expected.astype(float)
+    given = pd.Series(weights, dtype=float)
+    unknown = sorted(set(given.index) - set(expected.index))
+    if unknown:
+        raise ValueError(f"weights given for unknown series {unknown}.")
+    if bool((given < 0).any()) or not bool(np.isfinite(given).all()):
+        raise ValueError("weights must be finite and non-negative.")
+    return given.reindex(expected.index, fill_value=0.0)
+
+
+def _share_row(released: pd.Series, expected: pd.Series, weight: pd.Series) -> dict[str, float]:
+    """One row of :meth:`MixedFrequencyData.released_share`."""
+    has_slots = expected > 0
+    share = released[has_slots] / expected[has_slots]
+    w = weight[has_slots]
+    total = float(w.sum())
+    return {
+        "released": int(released.sum()),
+        "expected": int(expected.sum()),
+        "weight": total,
+        "share": float((share * w).sum() / total) if total > 0 else np.nan,
+    }
+
+
 def _to_period(
     value: pd.Period | str | pd.Timestamp, base: Frequency, how: Literal["S", "E"]
 ) -> pd.Period:
@@ -1161,6 +1261,97 @@ class MixedFrequencyData:
         1
         """
         return self._frame.notna().sum().rename("n_observations")
+
+    def released_share(
+        self,
+        period: pd.Period | str,
+        *,
+        by: str | Mapping[str, str | Sequence[str]] | None = None,
+        weights: Mapping[str, float] | pd.Series | None = None,
+        series: Sequence[str] | None = None,
+        as_of: pd.Timestamp | str | None = None,
+    ) -> pd.DataFrame:
+        """Share of the observations of a target period that are already released.
+
+        For every series, the *expected* observations are its storage slots inside
+        ``period`` (three for a monthly series in a quarter, one for a quarterly series,
+        none for an annual series outside the fourth quarter) and the *released* ones are
+        the slots holding a value in this panel (a vintage). The share of a group is the
+        weighted mean of the shares of its series; with the default weights (the number
+        of expected observations) it is simply ``released / expected``. Base periods of
+        ``period`` beyond the end of the grid count as expected and not released.
+
+        Parameters
+        ----------
+        period : pandas.Period or str
+            Target period, at the base frequency or a lower one (e.g. ``"2020Q2"``).
+        by : {None, "series", "category", "block", "frequency"} or mapping, optional
+            Grouping of the rows: one row per series (``None``/``"series"``), per
+            ``SeriesMetadata.category`` (``"uncategorized"`` when unset), per factor
+            block (a series counts in each of its blocks; ``"unassigned"`` when it has
+            none), per frequency, or a mapping ``{series: group or [groups]}`` (series
+            left out go to ``"unassigned"``).
+        weights : mapping or pandas.Series, optional
+            Non-negative weight of each series in the group shares, e.g. the absolute
+            weights of the series in the model's nowcast; series left out weigh zero.
+        series : sequence of str, optional
+            Subset of series (e.g. every indicator but the target).
+        as_of : Timestamp or str, optional
+            Information date: apply :meth:`as_of` first (needs release delays).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Index = series or groups plus a final ``"total"`` row (each series counted
+            once); columns ``released`` and ``expected`` (number of observations),
+            ``weight`` (sum of the weights of the series with expected observations) and
+            ``share`` (in ``[0, 1]``; NaN when nothing is expected or the weights sum to
+            zero).
+
+        Raises
+        ------
+        NowcastDataError
+            If ``period`` has a higher frequency than the base grid, or ``as_of`` is
+            given and release delays are missing.
+        ValueError
+            On unknown series, an invalid grouping, negative weights or a series or group
+            named ``"total"``.
+
+        Examples
+        --------
+        >>> import numpy as np, pandas as pd
+        >>> idx = pd.period_range("2020-01", periods=6, freq="M")
+        >>> df = pd.DataFrame(
+        ...     {
+        ...         "ip": [1.0, 2.0, 3.0, 4.0, 5.0, np.nan],
+        ...         "pmi": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        ...         "gdp": [np.nan, np.nan, 1.0, np.nan, np.nan, np.nan],
+        ...     },
+        ...     index=idx,
+        ... )
+        >>> mfd = MixedFrequencyData(df, {"ip": "M", "pmi": "M", "gdp": "Q"})
+        >>> share = mfd.released_share("2020Q2", series=["ip", "pmi"])
+        >>> share["released"].tolist(), share["expected"].tolist()
+        ([2, 3, 5], [3, 3, 6])
+        >>> round(float(share.loc["total", "share"]), 4)
+        0.8333
+        """
+        panel = self if as_of is None else self.as_of(as_of)
+        if series is not None:
+            panel = panel.select(list(series))
+        released, expected = _period_counts(panel, period)
+        weight = _share_weights(expected, weights)
+        members = _series_groups(panel.metadata, by)
+        rows = {
+            group: _share_row(released[list(cols)], expected[list(cols)], weight[list(cols)])
+            for group, cols in members.items()
+        }
+        if "total" in rows:
+            raise ValueError("A series or group named 'total' clashes with the total row.")
+        rows["total"] = _share_row(released, expected, weight)
+        frame = pd.DataFrame.from_dict(rows, orient="index")
+        frame.index.name = "series" if by in (None, "series") else "group"
+        return frame.astype({"released": int, "expected": int, "weight": float, "share": float})
 
     # ------------------------------------------------------------------ conversions
     def to_frame(self) -> pd.DataFrame:

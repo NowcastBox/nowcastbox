@@ -16,8 +16,10 @@ Fitted results draw themselves with `results.plot(kind)`:
 |---|---|---|
 | `"forecast"` | all | observed target, in-sample fit, out-of-sample nowcasts with 68/90 % bands |
 | `"fan"` | with a `std` column | fan chart from Gaussian quantiles |
-| `"density"` | with a `std` column | fan chart of `results.distribution(...)` (accepts `n_boot`) |
+| `"density"` | with a `std` column | fan chart of `results.distribution(...)` (accepts `n_boot`; with `method="empirical", backtest=bt` the [empirical error bands](../density/empirical-bands.md) at 57.5/68/90 %) |
 | `"data_availability"` / `"ragged_edge"` | with data | heatmap of observed / missing / ragged-edge cells by series |
+| `"released_share"` | with data | [share of a target period's data already released](../data/released-share.md) |
+| `"indicator_heatmap"` | with data | [z-score heatmap of the indicators](indicator-heatmap.md) |
 | `"factors"` | factor models | smoothed factors (forecast part shaded) |
 | `"eigenvalues"` | factor models | scree plot of the panel correlation matrix |
 | `"loadings"` | factor models | loadings heatmap (`style="heatmap"`) or bars (`style="bar"`) |
@@ -60,6 +62,9 @@ table.head()
 | Function | Input |
 |---|---|
 | `plot_forecast`, `plot_fan_chart` | results, a nowcast frame, quantiles or a `NowcastDistribution` |
+| `plot_empirical_bands` | output of `nowcastbox.density.empirical_bands` (fan at the band levels) |
+| `plot_indicator_heatmap`, `heatmap_table` | `IndicatorZScores`, `MixedFrequencyData` or results |
+| `plot_released_share`, `released_share_table` | `MixedFrequencyData` or results and a target period |
 | `plot_factors`, `plot_loadings`, `plot_eigenvalues` | factor results or frames |
 | `plot_data_availability`, `release_table` | `MixedFrequencyData` or results |
 | `plot_news_waterfall`, `plot_nowcast_tracker` | `NewsResults` / `NowcastTracker` or tidy tables |

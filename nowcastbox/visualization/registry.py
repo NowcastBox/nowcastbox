@@ -10,12 +10,16 @@ kind                   function                               results classes
 ``"fan"``              :func:`~.forecast.plot_fan_chart`       all (needs ``std``)
 ``"data_availability"`` :func:`~.data_flow.plot_data_availability` all (needs ``data``)
 ``"ragged_edge"``      alias of ``"data_availability"``
+``"released_share"``   :func:`~.data_flow.plot_released_share`  all (needs ``data``)
+``"indicator_heatmap"`` :func:`~.heatmap.plot_indicator_heatmap` all (needs ``data``)
 ``"factors"``          :func:`~.factors.plot_factors`          ``FactorResults``
 ``"eigenvalues"``      :func:`~.factors.plot_eigenvalues`      ``FactorResults``
 ``"loadings"``         :func:`~.factors.plot_loadings`         ``FactorResults``
 ``"loglikelihood"``    :func:`~.diagnostics.plot_loglikelihood` ``MixedFreqDFMResults``
 ``"density"``          :func:`~.forecast.plot_fan_chart` of    all (needs ``std``)
-                       ``results.distribution(...)`` (I5)
+                       ``results.distribution(...)`` (I5);
+                       with ``method="empirical"``,
+                       :func:`~.forecast.plot_empirical_bands`
 =====================  =====================================  ==========================
 
 ``TwoStepResults`` and ``MixedFreqDFMResults`` inherit from ``FactorResults`` and so get
@@ -39,14 +43,34 @@ from nowcastbox.models.em import MixedFreqDFMResults
 from nowcastbox.news import NewsResults, NowcastTracker, register_news_plot
 from nowcastbox.news.decomposition import plot_waterfall_default as _news_waterfall_default
 from nowcastbox.news.tracker import plot_path_default as _tracker_path_default
-from nowcastbox.visualization.data_flow import plot_data_availability
+from nowcastbox.visualization.data_flow import plot_data_availability, plot_released_share
 from nowcastbox.visualization.diagnostics import plot_loglikelihood
 from nowcastbox.visualization.factors import plot_eigenvalues, plot_factors, plot_loadings
-from nowcastbox.visualization.forecast import plot_fan_chart, plot_forecast
+from nowcastbox.visualization.forecast import (
+    plot_empirical_bands,
+    plot_fan_chart,
+    plot_forecast,
+)
+from nowcastbox.visualization.heatmap import plot_indicator_heatmap
 from nowcastbox.visualization.news import plot_news_waterfall, plot_nowcast_tracker
 
 __all__ = ["REGISTERED_PLOTS", "plot_density", "plot_news_results", "plot_tracker_results"]
 
+_DENSITY_KEYS = ("n_boot", "method", "random_state", "n_jobs", "periods", "block_length")
+_EMPIRICAL_KEYS = (
+    "method",
+    "periods",
+    "backtest",
+    "empirical_method",
+    "vintage",
+    "window",
+    "levels",
+    "outliers",
+    "outlier_threshold",
+    "availability",
+    "min_errors",
+    "model",
+)
 _NEWS_GROUPS = ("category", "block")
 """``by`` values of :meth:`NewsResults.plot` that are columns of the release table."""
 
@@ -61,7 +85,12 @@ def plot_density(results: NowcastResults, **kwargs: Any) -> Any:
     **kwargs
         ``n_boot``, ``method``, ``random_state``, ``n_jobs``, ``periods`` go to
         :meth:`~nowcastbox.core.results.NowcastResults.distribution`; the rest to
-        :func:`~nowcastbox.visualization.plot_fan_chart`.
+        :func:`~nowcastbox.visualization.plot_fan_chart`. With ``method="empirical"``
+        (empirical error bands from a backtest), ``backtest``, ``empirical_method``,
+        ``vintage``, ``window``, ``levels``, ``outliers``, ``outlier_threshold``,
+        ``availability``, ``min_errors`` and ``model`` also go to ``distribution`` and
+        the bands are drawn at their own levels (57.5 %, 68 % and 90 % by default) with
+        :func:`~nowcastbox.visualization.plot_empirical_bands`.
 
     Returns
     -------
@@ -77,10 +106,14 @@ def plot_density(results: NowcastResults, **kwargs: Any) -> Any:
     >>> fig.data[-1].name
     'Median'
     """
-    keys = ("n_boot", "method", "random_state", "n_jobs", "periods", "block_length")
+    empirical = kwargs.get("method") == "empirical"
+    keys = _EMPIRICAL_KEYS if empirical else _DENSITY_KEYS
     dist_kwargs = {k: kwargs.pop(k) for k in keys if k in kwargs}
     dist = results.distribution(**dist_kwargs)
     kwargs.setdefault("observed", results.observed.dropna())
+    if empirical:
+        kwargs.setdefault("title", f"{results.target}: empirical error bands")
+        return plot_empirical_bands(dist, **kwargs)
     kwargs.setdefault("title", f"{results.target}: predictive distribution")
     return plot_fan_chart(dist, **kwargs)
 
@@ -151,6 +184,8 @@ REGISTERED_PLOTS: dict[str, tuple[type, object]] = {
     "fan": (NowcastResults, plot_fan_chart),
     "data_availability": (NowcastResults, plot_data_availability),
     "ragged_edge": (NowcastResults, plot_data_availability),
+    "released_share": (NowcastResults, plot_released_share),
+    "indicator_heatmap": (NowcastResults, plot_indicator_heatmap),
     "factors": (FactorResults, plot_factors),
     "eigenvalues": (FactorResults, plot_eigenvalues),
     "loadings": (FactorResults, plot_loadings),

@@ -31,6 +31,21 @@ unit of work); otherwise sequentially.
 MAE / bias by horizon, relative RMSFE, Diebold-Mariano and Giacomini-White tests
 against a reference model and the Model Confidence Set.
 
+**Directional accuracy.** Every row also stores ``previous_actual``, the value of the
+target in the period before the target period *as known at the vintage date* (the
+last released value when that period is not yet published), which is the reference
+:math:`y^{p}_t` of the forecast directional accuracy (FDA, Linzenich & Meunier, 2024)
+and of the Pesaran & Timmermann (1992) test
+(:meth:`BacktestResults.directional_accuracy`, ``metrics=(..., "fda")``). With
+``previous="final"`` the final value of the previous period is used instead (this also
+works for tables saved before the column existed).
+
+**Sub-periods.** Every accuracy table and test accepts ``periods=``: a mapping
+``{label: (first, last)}`` of target periods (``None`` = open end; a list of such
+pairs is a union), or the shortcuts ``"covid"`` (pre-Covid, Covid, post-Covid and
+ex-Covid, see :func:`covid_periods`) and ``"ex-covid"``. The forecasts are filtered
+by target period and the result gains an outer ``period`` level.
+
 References
 ----------
 Giannone, D., Reichlin, L. & Small, D. (2008). Nowcasting: The real-time informational
@@ -41,11 +56,18 @@ real-time data flow. In *Handbook of Economic Forecasting*, vol. 2A, 195-237.
 
 Croushore, D. (2011). Frontiers of real-time data analysis. *Journal of Economic
 Literature*, 49(1), 72-100.
+
+Pesaran, M. H. & Timmermann, A. (1992). A simple nonparametric test of predictive
+performance. *Journal of Business & Economic Statistics*, 10(4), 461-465.
+
+Linzenich, J. & Meunier, B. (2024). Nowcasting made easier: a toolbox for economists.
+ECB Working Paper No. 3004.
 """
 
 from __future__ import annotations
 
 import copy
+import dataclasses
 import functools
 import warnings
 from collections.abc import Callable, Mapping, Sequence
@@ -60,13 +82,16 @@ from nowcastbox._logging import get_logger
 from nowcastbox.benchmarks.sklearn_adapter import SklearnBenchmark
 from nowcastbox.core.base import BaseBenchmark, BaseNowcaster
 from nowcastbox.core.data import FrequencySpec, MixedFrequencyData, as_mixed_frequency_data
-from nowcastbox.core.exceptions import NowcastBoxWarning, NowcastDataError
+from nowcastbox.core.exceptions import DataQualityWarning, NowcastBoxWarning, NowcastDataError
 from nowcastbox.core.formula import resolve_target
 from nowcastbox.core.frequency import Frequency, base_to_native, is_period_end
 from nowcastbox.core.results import NowcastResults
 from nowcastbox.evaluation.metrics import (
+    DIRECTIONAL_METRICS,
     LossLike,
     accuracy_by_horizon,
+    directional_accuracy,
+    directional_changes,
     loss_values,
     metric_by_horizon,
 )
@@ -79,14 +104,18 @@ from nowcastbox.evaluation.tests import (
     diebold_mariano,
     giacomini_white,
     model_confidence_set,
+    pesaran_timmermann,
 )
+from nowcastbox.models.robust import COVID_WINDOW
 from nowcastbox.vintages import ReleaseCalendar, VintageStore, pseudo_real_time, vintage_dates
 
-__all__ = ["FORECAST_COLUMNS", "BacktestResults", "PseudoRealTimeBacktest"]
+__all__ = ["FORECAST_COLUMNS", "BacktestResults", "PseudoRealTimeBacktest", "covid_periods"]
 
 logger = get_logger(__name__)
 
 #: Columns of :attr:`BacktestResults.forecasts` (one row per vintage, target period, model).
+#: ``previous_actual`` (value of the previous target period known at the vintage) is
+#: optional when a :class:`BacktestResults` is built from an older table.
 FORECAST_COLUMNS: tuple[str, ...] = (
     "vintage",
     "target_period",
@@ -99,8 +128,11 @@ FORECAST_COLUMNS: tuple[str, ...] = (
     "forecast",
     "actual",
     "error",
+    "previous_actual",
 )
 _KEY = ["vintage", "target_period"]
+_VALUE_COLUMNS = ("model", "forecast", "actual", "error", "previous_actual")
+_PREVIOUS = ("vintage", "final")
 _AGGREGATES = (None, "target_period")
 _PairTestResult = DieboldMarianoResult | GiacominiWhiteResult | ClarkWestResult
 _WINDOWS = ("expanding", "rolling")
@@ -140,16 +172,19 @@ class _Source:
     releases: dict[str, dict[pd.Period, pd.Timestamp]] = field(default_factory=dict)
     preprocess: Callable[[MixedFrequencyData], MixedFrequencyData] | None = None
 
-    def vintage(self, date: pd.Timestamp) -> MixedFrequencyData:
+    def raw(self, date: pd.Timestamp) -> MixedFrequencyData:
+        """Information set at ``date`` as published (before ``preprocess``)."""
         if self.store is not None:
             out = self.store.as_of(date, as_mixed=True, **self.metadata)
         else:
             assert self.panel is not None  # noqa: S101
             out = pseudo_real_time(self.panel, calendar=self.calendar, vintage=date)
         assert isinstance(out, MixedFrequencyData)  # noqa: S101
-        if self.preprocess is not None:
-            out = self.preprocess(out)
         return out
+
+    def prepare(self, panel: MixedFrequencyData) -> MixedFrequencyData:
+        """Apply the per-vintage ``preprocess`` step (identity when absent)."""
+        return panel if self.preprocess is None else self.preprocess(panel)
 
     def release_date(self, target: str, period: pd.Period) -> pd.Timestamp | None:
         if self.store is not None:
@@ -346,6 +381,18 @@ def _labels(spec: _RunSpec, date: pd.Timestamp, period: pd.Period, offset: int) 
     }
 
 
+def _previous_values(
+    panel: MixedFrequencyData, target: str, periods: pd.PeriodIndex
+) -> list[float]:
+    """Last value of ``target`` released at the vintage up to the period before each target."""
+    observed = panel.to_native(target, dropna=True)
+    out = []
+    for period in periods:
+        known = observed[observed.index <= period - 1]
+        out.append(float(known.iloc[-1]) if len(known) else np.nan)
+    return out
+
+
 def _forecast_safely(
     runner: _Runner,
     spec: _RunSpec,
@@ -374,13 +421,18 @@ def _run_block(
     failures: list[str] = []
     refit = True
     for date in dates:
-        panel = spec.source.vintage(date)
+        raw = spec.source.raw(date)
+        panel = spec.source.prepare(raw)
         periods = _target_periods(spec, panel, date)
         if len(periods) == 0:
             continue
         window = _estimation_panel(spec, panel, date, periods)
         current = pd.Period(date, freq=periods.freqstr)
-        labels = [_labels(spec, date, p, int((p - current).n)) for p in periods]
+        previous = _previous_values(raw, spec.target_name, periods)
+        labels = [
+            {**_labels(spec, date, p, int((p - current).n)), "previous_actual": prev}
+            for p, prev in zip(periods, previous, strict=True)
+        ]
         for name, runner in runners:
             target = spec.target if runner.is_model else spec.target_name
             values = _forecast_safely(
@@ -751,13 +803,168 @@ class PseudoRealTimeBacktest:
 
 
 def _assemble(records: list[dict[str, Any]], actuals: pd.Series, freq: Frequency) -> pd.DataFrame:
-    frame = pd.DataFrame.from_records(records, columns=list(FORECAST_COLUMNS[:-2]))
+    recorded = [c for c in FORECAST_COLUMNS if c not in ("actual", "error")]
+    frame = pd.DataFrame.from_records(records, columns=recorded)
     periods = pd.PeriodIndex(frame["target_period"], freq=freq.pandas_freq)
     frame["target_period"] = periods
     frame["actual"] = actuals.reindex(periods).to_numpy(dtype=float)
     frame["error"] = frame["actual"] - frame["forecast"]
     frame["vintage"] = pd.to_datetime(frame["vintage"])
+    frame["previous_actual"] = frame["previous_actual"].astype(float)
+    frame = frame[list(FORECAST_COLUMNS)]
     return frame.sort_values(["vintage", "target_period"], kind="stable").reset_index(drop=True)
+
+
+# ====================================================================== sub-periods
+_Interval = tuple[pd.Period | None, pd.Period | None]
+_PERIOD_SHORTCUTS = ("covid", "ex-covid")
+
+
+def _to_period(value: Any, freq: str | None) -> pd.Period:
+    """A period of frequency ``freq`` from a period-like (a coarser period is converted)."""
+    if isinstance(value, pd.Period):
+        return value if freq is None else value.asfreq(freq)
+    return pd.Period(value, freq=freq)
+
+
+def covid_periods(
+    freq: str = "Q", window: tuple[Any, Any] = COVID_WINDOW
+) -> dict[str, list[tuple[str | None, str | None]]]:
+    """Sub-periods around the Covid-19 pandemic, as target periods of frequency ``freq``.
+
+    The pandemic window (default: March 2020 to December 2021, the
+    :data:`~nowcastbox.models.robust.COVID_WINDOW` of the robust DFM) is converted to the
+    target frequency: every target period that overlaps it is a Covid period (2020Q1 to
+    2021Q4 for a quarterly target).
+
+    Parameters
+    ----------
+    freq : str, default "Q"
+        Frequency of the target periods (pandas alias).
+    window : tuple of two period-likes, default ("2020-03", "2021-12")
+        First and last (base) period of the pandemic.
+
+    Returns
+    -------
+    dict
+        ``{"pre-Covid", "Covid", "post-Covid", "ex-Covid"}`` mapped to lists of
+        ``(first, last)`` target periods as strings (``None`` = open end); "ex-Covid"
+        is the union of the pre- and post-Covid intervals. This is the
+        ``periods="covid"`` shortcut of :class:`BacktestResults`.
+
+    Raises
+    ------
+    ValueError
+        If the window ends before it starts.
+
+    Examples
+    --------
+    >>> from nowcastbox.evaluation import covid_periods
+    >>> covid_periods("Q")["Covid"]
+    [('2020Q1', '2021Q4')]
+    >>> covid_periods("Q")["ex-Covid"]
+    [(None, '2019Q4'), ('2022Q1', None)]
+    """
+    first, last = _to_period(window[0], freq), _to_period(window[1], freq)
+    if first > last:
+        raise ValueError(f"The Covid window ends before it starts: {window!r}.")
+    pre, post = str(first - 1), str(last + 1)
+    return {
+        "pre-Covid": [(None, pre)],
+        "Covid": [(str(first), str(last))],
+        "post-Covid": [(post, None)],
+        "ex-Covid": [(None, pre), (post, None)],
+    }
+
+
+def _is_pair(value: Any) -> bool:
+    return (
+        isinstance(value, tuple | list)
+        and len(value) == 2
+        and not any(isinstance(v, tuple | list) for v in value)
+    )
+
+
+def _intervals(label: str, value: Any, freq: str | None) -> list[_Interval]:
+    """Validated ``(first, last)`` target-period intervals of one sub-period."""
+    pairs = [value] if _is_pair(value) else value
+    if not isinstance(pairs, tuple | list) or not pairs or not all(map(_is_pair, pairs)):
+        raise ValueError(
+            f"Sub-period {label!r} must be a (first, last) pair or a list of pairs, got {value!r}."
+        )
+    out: list[_Interval] = []
+    for first, last in pairs:
+        lo = None if first is None else _to_period(first, freq)
+        hi = None if last is None else _to_period(last, freq)
+        if lo is not None and hi is not None and lo > hi:
+            raise ValueError(f"Sub-period {label!r} ends before it starts: {(first, last)!r}.")
+        out.append((lo, hi))
+    return out
+
+
+def _resolve_periods(periods: Any, freq: str | None) -> dict[str, list[_Interval]]:
+    """Sub-period specification (shortcut or mapping) as intervals of target periods."""
+    if isinstance(periods, str):
+        key = periods.lower()
+        if key not in _PERIOD_SHORTCUTS:
+            raise ValueError(
+                f"periods shortcut must be one of {_PERIOD_SHORTCUTS}, got {periods!r}."
+            )
+        spec: dict[Any, Any] = covid_periods(freq or "Q")
+        if key == "ex-covid":
+            spec = {"ex-Covid": spec["ex-Covid"]}
+    elif isinstance(periods, Mapping):
+        spec = dict(periods)
+    else:
+        raise ValueError(
+            f"periods must be a mapping {{label: (first, last)}}, 'covid' or 'ex-covid', got "
+            f"{type(periods).__name__}."
+        )
+    if not spec:
+        raise ValueError("periods must define at least one sub-period.")
+    return {str(label): _intervals(str(label), value, freq) for label, value in spec.items()}
+
+
+def _period_mask(index: pd.PeriodIndex, intervals: list[_Interval]) -> np.ndarray:
+    """Rows whose target period falls in the union of the intervals."""
+    mask = np.zeros(len(index), dtype=bool)
+    for first, last in intervals:
+        inside = np.ones(len(index), dtype=bool)
+        if first is not None:
+            inside &= np.asarray(index >= first)
+        if last is not None:
+            inside &= np.asarray(index <= last)
+        mask |= inside
+    return mask
+
+
+def _target_index(frame: pd.DataFrame) -> pd.PeriodIndex:
+    """Target periods of a forecast table (also when stored as strings, e.g. Parquet)."""
+    column = frame["target_period"]
+    if isinstance(column.dtype, pd.PeriodDtype):
+        return pd.PeriodIndex(column)
+    return pd.PeriodIndex([pd.Period(str(v)) for v in column])
+
+
+def _actual_by_period(frame: pd.DataFrame) -> pd.Series:
+    """Realisation of every target period of a forecast table."""
+    values = pd.Series(frame["actual"].to_numpy(dtype=float), index=_target_index(frame))
+    return values.groupby(level=0).first()
+
+
+def _final_previous(frame: pd.DataFrame, actuals: pd.Series | None = None) -> np.ndarray:
+    """Final value of the period before each row's target period."""
+    if "previous_final" in frame:
+        return frame["previous_final"].to_numpy(dtype=float)
+    if frame.empty:
+        return np.empty(0)
+    source = _actual_by_period(frame) if actuals is None else actuals
+    return source.reindex(_target_index(frame) - 1).to_numpy(dtype=float)
+
+
+def _check_previous(previous: str) -> None:
+    if previous not in _PREVIOUS:
+        raise ValueError(f"previous must be one of {_PREVIOUS}, got {previous!r}.")
 
 
 # ====================================================================== results
@@ -768,7 +975,9 @@ class BacktestResults:
     Parameters
     ----------
     forecasts : pandas.DataFrame
-        Long table, columns :data:`FORECAST_COLUMNS`.
+        Long table, columns :data:`FORECAST_COLUMNS` (``previous_actual`` is optional:
+        tables written by older versions, without it, still work, and directional
+        accuracy is then available with ``previous="final"``).
     models : list of str
         Model names (main model first, then benchmarks).
     target : str
@@ -816,7 +1025,7 @@ class BacktestResults:
         wide : bool, default False
             Long format (one row per vintage, target period and model) or wide format
             (one row per vintage and target period, one column per model plus
-            ``actual``).
+            ``actual`` and, when available, ``previous_actual``).
 
         Returns
         -------
@@ -826,17 +1035,19 @@ class BacktestResults:
         Examples
         --------
         >>> res.to_frame(wide=True).columns.tolist()  # doctest: +SKIP
-        ['M', 'AR', 'actual']
+        ['M', 'AR', 'actual', 'previous_actual']
         """
         frame = self.forecasts.copy()
         if not wide:
             return frame
-        labels = [c for c in FORECAST_COLUMNS if c not in ("model", "forecast", "actual", "error")]
+        labels = [c for c in FORECAST_COLUMNS if c not in _VALUE_COLUMNS]
         indexed = frame.set_index([*labels, "model"])
         table = indexed["forecast"].unstack("model")  # noqa: PD010
         table = table.reindex(columns=[m for m in self.models if m in table.columns])
-        actual = indexed["actual"].groupby(level=labels, dropna=False).first()
-        table["actual"] = actual.reindex(table.index)
+        for column in ("actual", "previous_actual"):
+            if column in indexed:
+                values = indexed[column].groupby(level=labels, dropna=False).first()
+                table[column] = values.reindex(table.index)
         table.columns.name = None
         return table
 
@@ -917,6 +1128,88 @@ class BacktestResults:
             frame = frame[counts == len(chosen)]
         return frame.copy()
 
+    # ------------------------------------------------------------------ sub-periods
+    def split_periods(self, periods: str | Mapping[str, Any]) -> dict[str, BacktestResults]:
+        """Results restricted to sub-periods of target periods.
+
+        Parameters
+        ----------
+        periods : mapping or {"covid", "ex-covid"}
+            ``{label: (first, last)}`` with target periods (strings, periods or dates;
+            ``None`` = open end) or a list of such pairs (union); ``"covid"`` gives the
+            pre-Covid, Covid, post-Covid and ex-Covid sub-periods of
+            :func:`covid_periods` and ``"ex-covid"`` only the last one.
+
+        Returns
+        -------
+        dict of str to BacktestResults
+            One result per non-empty sub-period (in the given order). Directional
+            accuracy with ``previous="final"`` still uses the actual value of a
+            previous period that lies outside the sub-period.
+
+        Raises
+        ------
+        ValueError
+            If the specification is invalid or no forecast falls in any sub-period.
+
+        Warns
+        -----
+        DataQualityWarning
+            If a sub-period has no forecast (it is skipped).
+
+        Examples
+        --------
+        >>> parts = res.split_periods({"2020": ("2020Q1", "2020Q4")})  # doctest: +SKIP
+        >>> parts["2020"].metrics()  # doctest: +SKIP
+        """
+        index = _target_index(self.forecasts)
+        spec = _resolve_periods(periods, index.freqstr)
+        with_final = self.forecasts.assign(previous_final=_final_previous(self.forecasts))
+        out: dict[str, BacktestResults] = {}
+        for label, intervals in spec.items():
+            mask = _period_mask(index, intervals)
+            if not mask.any():
+                warnings.warn(
+                    f"No forecast has a target period in sub-period {label!r}; skipped.",
+                    DataQualityWarning,
+                    stacklevel=2,
+                )
+                continue
+            out[label] = dataclasses.replace(self, forecasts=with_final[mask])
+        if not out:
+            raise ValueError("No forecast has a target period in any of the sub-periods.")
+        return out
+
+    def _by_periods(self, periods: Any, method: str, **kwargs: Any) -> pd.DataFrame:
+        """Call a table method on every sub-period and stack the results (level ``period``)."""
+        parts = {
+            label: getattr(sub, method)(**kwargs)
+            for label, sub in self.split_periods(periods).items()
+        }
+        return pd.concat(parts, names=["period"])
+
+    def _evaluation_frame(
+        self,
+        models: Sequence[str] | None,
+        common_sample: bool,
+        metrics: Sequence[str],
+        previous: str,
+    ) -> pd.DataFrame:
+        """Evaluable rows, with the previous values when a directional metric is asked."""
+        _check_previous(previous)
+        frame = self.evaluable(models, common_sample=common_sample)
+        if not any(m in DIRECTIONAL_METRICS for m in metrics):
+            return frame
+        if previous == "final":
+            actuals = _actual_by_period(self.forecasts)
+            return frame.assign(previous_actual=_final_previous(frame, actuals))
+        if "previous_actual" not in frame:
+            raise ValueError(
+                "The forecast table has no 'previous_actual' column (written by an older "
+                "version?): use previous='final'."
+            )
+        return frame
+
     # ------------------------------------------------------------------ accuracy
     def metrics(
         self,
@@ -925,8 +1218,10 @@ class BacktestResults:
         *,
         models: Sequence[str] | None = None,
         common_sample: bool = True,
+        previous: str = "vintage",
+        periods: str | Mapping[str, Any] | None = None,
     ) -> pd.DataFrame:
-        """Accuracy metrics by horizon.
+        """Accuracy metrics by horizon (optionally by sub-period).
 
         Parameters
         ----------
@@ -934,29 +1229,52 @@ class BacktestResults:
             Grouping column (``"months_to_end"``, ``"days_to_end"``,
             ``"days_to_release"``, ``"offset"``, ``"kind"``...) or ``None`` (pooled).
         metrics : sequence of str, default ("rmsfe", "mae", "bias", "n")
-            Metrics (see :data:`nowcastbox.evaluation.metrics.METRICS`).
+            Metrics (see :data:`nowcastbox.evaluation.metrics.METRICS`) and directional
+            metrics (``"fda"``, :data:`~nowcastbox.evaluation.metrics.DIRECTIONAL_METRICS`).
         models : sequence of str, optional
             Models (default: all).
         common_sample : bool, default True
             Use only target periods/vintages forecast by every model.
+        previous : {"vintage", "final"}, default "vintage"
+            Previous value of the directional metrics: the value of the previous target
+            period known at the vintage (column ``previous_actual``; the last released
+            value when that period is not yet published) or its final value.
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`); the index then
+            gains an outer level ``period``.
 
         Returns
         -------
         pandas.DataFrame
-            Index: horizon; columns ``(metric, model)``.
+            Index: horizon (or ``(period, horizon)``); columns ``(metric, model)``.
+
+        Raises
+        ------
+        ValueError
+            If a metric, model, ``previous`` or ``periods`` is invalid, or ``"fda"``
+            is asked with ``previous="vintage"`` on a table without ``previous_actual``.
 
         Examples
         --------
         >>> res.metrics(horizon=None)  # doctest: +SKIP
+        >>> res.metrics("kind", ("rmsfe", "fda"), periods="covid")  # doctest: +SKIP
         """
-        frame = self.evaluable(models, common_sample=common_sample)
+        if periods is not None:
+            options = {"models": models, "common_sample": common_sample, "previous": previous}
+            return self._by_periods(periods, "metrics", horizon=horizon, metrics=metrics, **options)
+        frame = self._evaluation_frame(models, common_sample, metrics, previous)
         table = accuracy_by_horizon(frame, horizon, metrics)
         return table.reindex(columns=self._models(models), level="model")
 
     def _metric(
-        self, metric: str, horizon: str | None, models: Sequence[str] | None, common: bool
+        self,
+        metric: str,
+        horizon: str | None,
+        models: Sequence[str] | None,
+        common: bool,
+        previous: str = "vintage",
     ) -> pd.DataFrame:
-        frame = self.evaluable(models, common_sample=common)
+        frame = self._evaluation_frame(models, common, (metric,), previous)
         table = metric_by_horizon(frame, metric, horizon)
         return table.reindex(columns=self._models(models))
 
@@ -966,6 +1284,7 @@ class BacktestResults:
         *,
         models: Sequence[str] | None = None,
         common_sample: bool = True,
+        periods: str | Mapping[str, Any] | None = None,
     ) -> pd.DataFrame:
         """RMSFE of every model by nowcast horizon.
 
@@ -977,16 +1296,26 @@ class BacktestResults:
             Models (default: all).
         common_sample : bool, default True
             Use only target periods/vintages forecast by every model.
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`).
 
         Returns
         -------
         pandas.DataFrame
-            Index: horizon; columns: models.
+            Index: horizon (or ``(period, horizon)``); columns: models.
 
         Examples
         --------
         >>> res.rmsfe_by_horizon()  # doctest: +SKIP
         """
+        if periods is not None:
+            return self._by_periods(
+                periods,
+                "rmsfe_by_horizon",
+                horizon=horizon,
+                models=models,
+                common_sample=common_sample,
+            )
         return self._metric("rmsfe", horizon, models, common_sample)
 
     def relative_to(
@@ -996,6 +1325,7 @@ class BacktestResults:
         *,
         metric: str = "rmsfe",
         models: Sequence[str] | None = None,
+        periods: str | Mapping[str, Any] | None = None,
     ) -> pd.DataFrame:
         """Metric of every model divided by that of a reference (common sample).
 
@@ -1009,6 +1339,8 @@ class BacktestResults:
             Metric (``"rmsfe"``, ``"mae"``, ``"mse"``).
         models : sequence of str, optional
             Models (default: all; the reference is always included).
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`).
 
         Returns
         -------
@@ -1023,13 +1355,113 @@ class BacktestResults:
         Examples
         --------
         >>> res.relative_to("AR")  # doctest: +SKIP
+        >>> res.relative_to("AR", "kind", periods="ex-covid")  # doctest: +SKIP
         """
+        if periods is not None:
+            options = {"metric": metric, "models": models}
+            return self._by_periods(
+                periods, "relative_to", reference=reference, horizon=horizon, **options
+            )
         ref = self._reference(reference)
         chosen = self._models(models)
         if ref not in chosen:
             chosen.append(ref)
         table = self._metric(metric, horizon, chosen, True)
         return table.div(table[ref], axis=0)
+
+    def directional_accuracy(
+        self,
+        horizon: str | None = "months_to_end",
+        *,
+        models: Sequence[str] | None = None,
+        common_sample: bool = True,
+        previous: str = "vintage",
+        test: bool = True,
+        alternative: str = "greater",
+        periods: str | Mapping[str, Any] | None = None,
+    ) -> pd.DataFrame:
+        r"""Forecast directional accuracy and Pesaran-Timmermann test by horizon.
+
+        A forecast scores when it predicts correctly whether the target rises or falls
+        with respect to the previous value, :math:`(y_t - y^p_t)(\hat y_t - y^p_t) > 0`
+        (see :func:`~nowcastbox.evaluation.directional_accuracy`); the Pesaran &
+        Timmermann (1992) test compares the hit rate with the one expected if the
+        predicted and actual directions were independent.
+
+        Parameters
+        ----------
+        horizon : str or None, default "months_to_end"
+            Grouping column (``None``: pooled).
+        models : sequence of str, optional
+            Models (default: all).
+        common_sample : bool, default True
+            Use only target periods/vintages forecast by every model.
+        previous : {"vintage", "final"}, default "vintage"
+            Previous value: known at the vintage (``previous_actual``) or final.
+        test : bool, default True
+            Add the Pesaran-Timmermann statistic and p-value.
+        alternative : {"greater", "two-sided", "less"}, default "greater"
+            Alternative of the test (``"greater"``: better than chance).
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Index ``(model, horizon)`` (or ``(period, model, horizon)``); columns
+            ``fda`` and ``n_obs`` and, with ``test=True``, ``statistic``, ``pvalue``
+            and ``expected_hit_rate`` (NaN with fewer than 3 forecasts or when the
+            directions do not vary).
+
+        Raises
+        ------
+        ValueError
+            If ``previous``, ``alternative`` or a model is invalid, or the table has no
+            ``previous_actual`` column and ``previous="vintage"``.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from nowcastbox.evaluation import BacktestResults
+        >>> frame = pd.DataFrame(
+        ...     {
+        ...         "vintage": pd.to_datetime(["2020-01-15"] * 4),
+        ...         "target_period": pd.PeriodIndex(["2019Q4"] * 2 + ["2020Q1"] * 2, freq="Q"),
+        ...         "months_to_end": [-1, -1, 2, 2],
+        ...         "model": ["M", "AR"] * 2,
+        ...         "forecast": [1.2, 0.8, 0.4, 0.6],
+        ...         "actual": [1.5, 1.5, 0.5, 0.5],
+        ...         "previous_actual": [1.0, 1.0, 1.0, 1.0],
+        ...     }
+        ... ).assign(error=lambda f: f["actual"] - f["forecast"])
+        >>> res = BacktestResults(frame, ["M", "AR"], "gdp")
+        >>> res.directional_accuracy(horizon=None, test=False)["fda"].to_dict()
+        {('M', 'all'): 1.0, ('AR', 'all'): 0.5}
+        """
+        if periods is not None:
+            options = {"models": models, "common_sample": common_sample, "test": test}
+            return self._by_periods(
+                periods,
+                "directional_accuracy",
+                horizon=horizon,
+                previous=previous,
+                alternative=alternative,
+                **options,
+            )
+        if alternative not in ("greater", "two-sided", "less"):
+            raise ValueError(f"Invalid alternative {alternative!r}.")
+        chosen = self._models(models)
+        frame = self._evaluation_frame(chosen, common_sample, ("fda",), previous)
+        work = frame.assign(_h="all") if horizon is None else frame.assign(_h=frame[horizon])
+        rows = [
+            {"model": model, "horizon": label, **_directional_row(group, test, alternative)}
+            for model in chosen
+            for label, group in work[work["model"] == model].groupby("_h", sort=True, dropna=False)
+        ]
+        columns = ["model", "horizon", "fda", "n_obs"]
+        if test:
+            columns += ["statistic", "pvalue", "expected_hit_rate"]
+        return pd.DataFrame(rows, columns=columns).set_index(["model", "horizon"])
 
     # ------------------------------------------------------------------ tests
     def _paired(
@@ -1086,6 +1518,7 @@ class BacktestResults:
         hln: bool = True,
         alternative: str = "two-sided",
         aggregate: str | None = None,
+        periods: str | Mapping[str, Any] | None = None,
     ) -> pd.DataFrame:
         r"""Diebold-Mariano (HLN) tests of every model against a reference.
 
@@ -1117,23 +1550,37 @@ class BacktestResults:
             Alternative hypothesis.
         aggregate : {None, "target_period"}, default None
             Average the losses within each target period before testing.
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`); the index then
+            starts with a ``period`` level.
 
         Returns
         -------
         pandas.DataFrame
-            Index ``(model, horizon)``; columns ``statistic``, ``pvalue``,
-            ``mean_loss_differential``, ``n_obs`` (NaN when fewer than 3 pairs).
+            Index ``(model, horizon)`` (or ``(period, model, horizon)``); columns
+            ``statistic``, ``pvalue``, ``mean_loss_differential``, ``n_obs`` (NaN when
+            fewer than 3 pairs).
 
         Raises
         ------
         ValueError
-            If ``aggregate`` is invalid or the reference is unknown.
+            If ``aggregate`` or ``periods`` is invalid or the reference is unknown.
 
         Examples
         --------
         >>> res.diebold_mariano("AR")  # doctest: +SKIP
         >>> res.diebold_mariano("AR", "kind", aggregate="target_period", h=2)  # doctest: +SKIP
         """
+        if periods is not None:
+            options = {"loss": loss, "h": h, "hln": hln, "alternative": alternative}
+            return self._by_periods(
+                periods,
+                "diebold_mariano",
+                reference=reference,
+                horizon=horizon,
+                aggregate=aggregate,
+                **options,
+            )
 
         def test(l1: np.ndarray, l2: np.ndarray) -> DieboldMarianoResult:
             return diebold_mariano(l1, l2, h=h, loss=_identity, alternative=alternative, hln=hln)
@@ -1148,6 +1595,7 @@ class BacktestResults:
         h: int = 1,
         alternative: str = "less",
         aggregate: str | None = None,
+        periods: str | Mapping[str, Any] | None = None,
     ) -> pd.DataFrame:
         r"""Clark-West tests of every model against a *nested* benchmark.
 
@@ -1169,22 +1617,29 @@ class BacktestResults:
         aggregate : {None, "target_period"}, default None
             Average the adjusted losses within each target period before testing (see
             :meth:`diebold_mariano`).
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`).
 
         Returns
         -------
         pandas.DataFrame
-            Index ``(model, horizon)``; columns ``statistic``, ``pvalue``,
-            ``mean_loss_differential`` (adjusted), ``n_obs``.
+            Index ``(model, horizon)`` (or ``(period, model, horizon)``); columns
+            ``statistic``, ``pvalue``, ``mean_loss_differential`` (adjusted), ``n_obs``.
 
         Raises
         ------
         ValueError
-            If ``aggregate`` is invalid or the reference is unknown.
+            If ``aggregate`` or ``periods`` is invalid or the reference is unknown.
 
         Examples
         --------
         >>> res.clark_west("AR", "kind", aggregate="target_period")  # doctest: +SKIP
         """
+        if periods is not None:
+            options = {"h": h, "alternative": alternative, "aggregate": aggregate}
+            return self._by_periods(
+                periods, "clark_west", reference=reference, horizon=horizon, **options
+            )
 
         def test(l1: np.ndarray, l2: np.ndarray) -> ClarkWestResult:
             # l1 - l2 is the Clark-West adjusted differential (see _clark_west_pair)
@@ -1200,6 +1655,7 @@ class BacktestResults:
         loss: LossLike = "squared",
         h: int = 1,
         aggregate: str | None = None,
+        periods: str | Mapping[str, Any] | None = None,
     ) -> pd.DataFrame:
         """Giacomini-White conditional tests of every model against a reference.
 
@@ -1216,22 +1672,29 @@ class BacktestResults:
         aggregate : {None, "target_period"}, default None
             Average the losses within each target period before testing (see
             :meth:`diebold_mariano`).
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`).
 
         Returns
         -------
         pandas.DataFrame
-            Index ``(model, horizon)``; columns ``statistic``, ``pvalue``,
-            ``mean_loss_differential``, ``n_obs``.
+            Index ``(model, horizon)`` (or ``(period, model, horizon)``); columns
+            ``statistic``, ``pvalue``, ``mean_loss_differential``, ``n_obs``.
 
         Raises
         ------
         ValueError
-            If ``aggregate`` is invalid or the reference is unknown.
+            If ``aggregate`` or ``periods`` is invalid or the reference is unknown.
 
         Examples
         --------
         >>> res.giacomini_white("AR", horizon=None)  # doctest: +SKIP
         """
+        if periods is not None:
+            options = {"loss": loss, "h": h, "aggregate": aggregate}
+            return self._by_periods(
+                periods, "giacomini_white", reference=reference, horizon=horizon, **options
+            )
 
         def test(l1: np.ndarray, l2: np.ndarray) -> GiacominiWhiteResult:
             return giacomini_white(l1, l2, h=h, loss=_identity)
@@ -1281,7 +1744,8 @@ class BacktestResults:
         random_state: int | np.random.Generator | None = 0,
         models: Sequence[str] | None = None,
         aggregate: str | None = None,
-    ) -> ModelConfidenceSetResult | dict[Any, ModelConfidenceSetResult]:
+        periods: str | Mapping[str, Any] | None = None,
+    ) -> ModelConfidenceSetResult | dict[Any, Any]:
         r"""Model Confidence Set (Hansen, Lunde & Nason, 2011) of the evaluated models.
 
         Parameters
@@ -1305,23 +1769,25 @@ class BacktestResults:
         aggregate : {None, "target_period"}, default None
             Average the losses within each target period before bootstrapping (see
             :meth:`diebold_mariano`).
+        periods : mapping or {"covid", "ex-covid"}, optional
+            Sub-periods of target periods (see :meth:`split_periods`).
 
         Returns
         -------
         ModelConfidenceSetResult or dict
-            One result, or ``{horizon value: result}``.
+            One result, or ``{horizon value: result}``; with ``periods``, a dict
+            ``{period label: <one of these>}``.
 
         Raises
         ------
         ValueError
-            If ``aggregate`` is invalid.
+            If ``aggregate`` or ``periods`` is invalid.
 
         Examples
         --------
         >>> res.mcs(alpha=0.25).included  # doctest: +SKIP
+        >>> res.mcs(periods="covid")["ex-Covid"].included  # doctest: +SKIP
         """
-        _check_aggregate(aggregate)
-        table = self.loss_table(loss=loss, models=models)
         options = {
             "alpha": alpha,
             "statistic": statistic,
@@ -1329,6 +1795,15 @@ class BacktestResults:
             "block_length": block_length,
             "random_state": random_state,
         }
+        if periods is not None:
+            return {
+                label: sub.mcs(
+                    horizon=horizon, loss=loss, models=models, aggregate=aggregate, **options
+                )
+                for label, sub in self.split_periods(periods).items()
+            }
+        _check_aggregate(aggregate)
+        table = self.loss_table(loss=loss, models=models)
         if horizon is None:
             return model_confidence_set(_per_period(table, aggregate), **options)
         frame = self.evaluable(models)
@@ -1387,6 +1862,30 @@ class BacktestResults:
             f"BacktestResults(target={self.target!r}, models={self.models}, "
             f"n_forecasts={len(self.forecasts)})"
         )
+
+
+def _directional_row(group: pd.DataFrame, test: bool, alternative: str) -> dict[str, float]:
+    """FDA, number of complete forecasts and (optionally) the Pesaran-Timmermann test."""
+    a, f, p = (group[c].to_numpy(dtype=float) for c in ("actual", "forecast", "previous_actual"))
+    row = {
+        "fda": directional_accuracy(a, f, p),
+        "n_obs": float(directional_changes(a, f, p)[0].size),
+    }
+    if not test:
+        return row
+    nan = {"statistic": np.nan, "pvalue": np.nan, "expected_hit_rate": np.nan}
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DataQualityWarning)
+            out = pesaran_timmermann(a, f, p, alternative=alternative)
+    except NowcastDataError:
+        return {**row, **nan}
+    return {
+        **row,
+        "statistic": out.statistic,
+        "pvalue": out.pvalue,
+        "expected_hit_rate": out.expected_hit_rate,
+    }
 
 
 def _fmt_date(value: Any) -> str:

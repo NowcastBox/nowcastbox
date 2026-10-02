@@ -16,7 +16,7 @@ every run.
 name: brazil_pib
 target: pib
 data:
-  source: brazil_nowcast        # built-in dataset, csv/parquet file or connectors
+  source: brazil_nowcast        # built-in dataset, csv/parquet/excel file or connectors
   start: 2010-01
   vintage: today                # information set: today or a date (pseudo real time)
 preprocessing:
@@ -36,20 +36,149 @@ random_state: 0
 | Section | Content |
 |---|---|
 | `target`, `name`, `description` | what is nowcast and the run's name (used for snapshots) |
-| `data` | `source` (dataset name, `csv`, `parquet` or connector series), sample window, `vintage`, metadata overrides (frequencies, transforms, delays, blocks, categories) |
+| `data` | `source` (dataset name, `csv`, `parquet`, `excel` or connector series), sample window, `vintage`, metadata overrides (frequencies, transforms, delays, blocks, categories) |
 | `preprocessing` | `prepare_panel` options (`enabled: false` to skip) |
 | `model` | `type` (`MixedFreqDFM` or `TwoStepDFM`), `factors` (number or per block), and any estimator option |
-| `outputs` | `nowcast`, `news` (against the previous snapshot or a date), `density` (`n_boot`), `diagnostics`, `report_html`, `backtest` |
+| `outputs` | `nowcast`, `news` (against the previous snapshot or a date), `density` (`n_boot`), `diagnostics`, `report_html`, `backtest` (with `metrics` and sub-`periods`), `empirical_bands`, `heatmap`, `alternatives`, `excel` (workbook with the results) |
 | `snapshot_dir`, `random_state` | archive location and seed |
 
 Specs are validated before anything runs; errors point to the location in the file
 (`model.factors.global: ...`) and suggest close matches for misspelled keys.
+
+## Excel workbooks
+
+!!! note "New in 0.2.0"
+    Excel data source, `nowcastbox init --excel` and the `excel` output. Install the
+    optional extra: `pip install "nowcastbox[excel]"` (it adds `openpyxl`); without it
+    every Excel function raises an `ImportError` that says so.
+
+Many forecasting units keep their data in spreadsheets. As in the templates of the ECB
+Nowcasting Toolbox (Linzenich & Meunier, 2024), a workbook holds one sheet per frequency
+and one sheet of metadata:
+
+| Sheet | Content |
+|---|---|
+| `monthly` | column `date` (`2020-01`, or an Excel date), then one column per monthly series |
+| `quarterly` | column `date` (`2020Q1`, or any date inside the quarter), then the quarterly series |
+| `annual` | column `date` (`2020`), then the annual series (optional sheet) |
+| `metadata` | one row per series: `series`, `frequency`, `transform` (code 0–7 or a name such as `dlog`), `delay_days`, `blocks` (`global;real`), `category` (`hard`, `soft`, `financial`, `other`), `description`, `aggregation`, `units`, `transform_applied` |
+| `readme` | instructions (ignored when reading) |
+
+Only `series` is required in the metadata sheet; frequencies come from the sheet of each
+series (a `frequency` column must agree with it), transformation codes are checked with
+`transform_from_code` (0 level, 1 % change, 2 difference, 3 difference of the year-on-year
+rate, 4 difference of the annual difference, 5 annual difference, 6 year-on-year rate,
+7 quarter-on-quarter rate) and quarterly/annual values are stored in the last month of
+their period, as everywhere in NowcastBox. Empty cells are missing values (the ragged
+edge). The row order of the metadata sheet sets the column order of the panel.
+
+```python
+from nowcastbox.pipeline import NowcastSpec, run_pipeline
+from nowcastbox.pipeline.data import example_workbook_path, read_excel_panel, write_excel_panel
+
+panel = read_excel_panel(example_workbook_path())     # bundled example (simulated data)
+panel.metadata_frame()[["frequency", "transform", "release_delay", "category"]]
+
+write_excel_panel("my_data.xlsx", panel)              # any monthly panel -> workbook
+read_excel_panel("my_data.xlsx").equals(panel)        # exact round trip
+write_excel_panel("empty_template.xlsx")              # headers only, to fill by hand
+```
+
+In a spec, `source: excel` (or a path ending in `.xlsx`) reads the workbook; `sheets`
+renames the sheets of each role (`null` disables one), and the usual overrides
+(`columns`, `start`, `delay`, `categories`, ...) apply on top of the metadata sheet:
+
+```python
+spec = NowcastSpec.from_dict(
+    {
+        "name": "excel_demo",
+        "target": "gdp",
+        "data": {
+            "source": "excel",
+            "path": "my_data.xlsx",
+            "sheets": {"monthly": "monthly", "quarterly": "quarterly", "metadata": "metadata"},
+        },
+        "vintage": "2019-11-15",          # pseudo real time from the delay_days column
+        "preprocessing": False,
+        "model": {"type": "TwoStepDFM", "factors": 1},
+        "outputs": ["nowcast", {"excel": {"path": "results.xlsx"}}],
+    }
+)
+spec.data.kind, spec.outputs.names
+```
+
+The `excel` output exports the run to a workbook (`nowcast`, `loadings`/`factors`,
+`density`, `news`, `diagnostics`, `backtest`/`backtest_rmsfe`/`backtest_metrics`,
+`empirical_bands`, `heatmap`, `alternatives`/`alternatives_range`, `data` and an `info`
+sheet, as available; with a `snapshot_dir` the snapshot also gets `results.xlsx`); `write_run_excel(run, path)` does the same
+for any `PipelineRun`:
+
+```python
+from nowcastbox.pipeline.data import write_run_excel
+
+run = run_pipeline(spec)
+write_run_excel(run, "results_copy.xlsx")
+```
+
+## Evaluation and conjunctural outputs
+
+!!! note "New in 0.2.0"
+    The outputs below reproduce the evaluation and conjunctural products of the ECB
+    Nowcasting Toolbox (Linzenich & Meunier, 2024).
+
+| Output | Options | What it adds |
+|---|---|---|
+| `backtest` | `metrics` (`rmsfe`, `mse`, `mae`, `bias`, `fda`, `n`), `periods` (`covid`, `ex-covid` or `{label: [first, last]}`) | accuracy table by horizon and sub-period (`run.backtest_metrics`), including the [forecast directional accuracy](evaluation/metrics.md) |
+| `empirical_bands` | `method` (`mae`, `rmse`, `quantile`), `window` (`10Y`, `all`), `levels`, `outliers`, `min_errors`, `availability` | [empirical error bands](density/empirical-bands.md) from the backtest's past errors at the same horizon (needs `backtest`) |
+| `heatmap` | `by` (`series`, `category`, `block`, `frequency`), `smooth` (`mm`, `none`), `window`, `last` | [z-scores of the indicators](visualization/indicator-heatmap.md) at the vintage (`run.heatmap`) |
+| `alternatives` | `by` (`category`, `block`), `drop` (`1`, `[1, 2]`), `refit` | [nowcasts without one or two groups](evaluation/alternative-models.md) (`run.alternatives`) |
+
+The HTML report gains the empirical bands (headline tiles and fan chart), the range of
+the alternative nowcasts, the [share of the nowcast period's data already
+released](data/released-share.md), the heatmap and the accuracy table; snapshots and the
+Excel workbook store the corresponding tables.
+
+```python
+spec = {
+    "name": "ecb_outputs",
+    "target": "gdp",
+    "data": {
+        "source": "simulated_dfm",
+        "columns": ["x01", "x02", "x03", "x04", "x05", "x06"],
+        "start": "2008-01",
+        "categories": {"x01": "hard", "x02": "hard", "x03": "soft", "x04": "soft",
+                       "x05": "financial", "x06": "financial"},
+    },
+    "vintage": "2019-11-15",
+    "preprocessing": False,
+    "model": {"type": "TwoStepDFM", "factors": 1},
+    "outputs": {
+        "backtest": {
+            "start": "2015-01-01",
+            "end": "2019-10-01",
+            "target_offsets": [0],
+            "metrics": ["rmsfe", "fda", "n"],
+            "periods": {"2015-2017": ["2015Q1", "2017Q4"], "2018-": ["2018Q1", None]},
+        },
+        "empirical_bands": {"min_errors": 4},
+        "heatmap": {"by": "category"},
+        "alternatives": {"drop": 1, "refit": False},
+        "report_html": {"plotlyjs": "cdn"},
+    },
+}
+run = run_pipeline(spec)
+run.backtest_metrics
+run.empirical_bands.to_frame()
+run.alternatives.range()
+```
 
 ## Command line
 
 ```bash
 nowcastbox init nowcast_pib.yaml --template brazil_pib   # commented example spec
 nowcastbox init --list                                   # brazil_pib, connectors, csv, simulated
+nowcastbox init data.xlsx --excel                        # empty Excel data template
+nowcastbox init data.xlsx --excel --example              # filled example workbook
 nowcastbox validate nowcast_pib.yaml --check-data
 nowcastbox run nowcast_pib.yaml                          # nowcast + outputs + snapshot
 nowcastbox run nowcast_pib.yaml --vintage 2024-11-15 --json
@@ -92,8 +221,9 @@ store.history()
 
 `PipelineRun` exposes the estimation results (`results`), the panel, the news
 decomposition, the predictive distribution, the diagnostics, the HTML report path and
-the snapshot written. Failures of optional outputs (news, diagnostics, report) do not
-stop the run; they are listed in `run.warnings`.
+the snapshot written. Failures of optional outputs (news, diagnostics, backtest, empirical
+bands, heatmap, alternative models, report, Excel workbook) do not stop the run; they are
+listed in `run.warnings`.
 
 The command-line entry point is also callable from Python:
 

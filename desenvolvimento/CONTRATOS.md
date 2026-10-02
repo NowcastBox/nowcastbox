@@ -171,6 +171,12 @@ mesmos metadados — usado por transformações), `with_metadata(col, **changes)
 `destandardize(stats)`, `standardization_stats(ddof)`, `equals(other, atol)`.
 Blocos não usados por nenhuma série são removidos em `select`/`with_metadata`.
 
+Paridade ECB (0.2.0): `released_share(period, *, by=None, weights=None, series=None,
+as_of=None) -> DataFrame` — por série/grupo (`"category"`, `"block"`, `"frequency"` ou
+mapeamento `{série: grupo ou [grupos]}`) e linha `"total"`, colunas `released`,
+`expected`, `weight`, `share`; observações esperadas = *slots* da série dentro do período
+(períodos-base além do fim da grade contam como esperados e não divulgados).
+
 #### Regra de divulgação (`as_of`)
 
 Observação do período nativo `p` é divulgada em `fim(p) + release_delay` dias e é mantida
@@ -245,8 +251,10 @@ Tipos registrados (integração da onda 2; `nowcastbox/visualization/registry.py
 |---|---|---|
 | `"forecast"` | `NowcastResults` | `plot_forecast` (observado, in/out-of-sample, faixas 68/90 %) |
 | `"fan"` | `NowcastResults` (precisa de `std`) | `plot_fan_chart` (quantis gaussianos da coluna `std`) |
-| `"density"` | `NowcastResults` (precisa de `std`) | `plot_fan_chart(results.distribution(...))` (I5; aceita `n_boot`) |
+| `"density"` | `NowcastResults` (precisa de `std`) | `plot_fan_chart(results.distribution(...))` (I5; aceita `n_boot`); com `method="empirical", backtest=...`, `plot_empirical_bands` nos níveis das bandas (57,5/68/90 %) |
 | `"data_availability"` / `"ragged_edge"` | `NowcastResults` (precisa de `data`) | `plot_data_availability` |
+| `"released_share"` | `NowcastResults` (precisa de `data`) | `plot_released_share` (parcela divulgada de um período-alvo; 0.2.0) |
+| `"indicator_heatmap"` | `NowcastResults` (precisa de `data`) | `plot_indicator_heatmap` (z-scores dos indicadores; 0.2.0) |
 | `"factors"`, `"eigenvalues"`, `"loadings"` | `FactorResults` | `plot_factors`, `plot_eigenvalues`, `plot_loadings` (`style=` heatmap/bar) |
 | `"loglikelihood"` | `MixedFreqDFMResults` | `plot_loglikelihood` |
 
@@ -266,8 +274,12 @@ contrário em tempo de execução):
 | `news(old, new, target_period=None, **kw)` | `nowcastbox.news.news_decomposition` | `NewsResults` |
 | `nowcast_tracker(data, calendar=None, target_period=None, start=None, end=None, **kw)` | `nowcastbox.news.nowcast_tracker` | `NowcastTracker` |
 | `level_contributions(data=None, target_period=None, **kw)` | `nowcastbox.news.level_contributions` | `LevelContributions` |
-| `distribution(**kw)` | `nowcastbox.density.nowcast_distribution` | `NowcastDistribution` |
+| `distribution(**kw)` | `nowcastbox.density.nowcast_distribution`; com `method="empirical"` (exige `backtest=`; `empirical_method=` vira `method`), `nowcastbox.density.empirical_bands` | `NowcastDistribution` (`EmpiricalGaussianDistribution` para `mae`/`rmse`) ou `EmpiricalQuantileDistribution` |
 | `diagnostics(data=None, **kw)` | `nowcastbox.diagnostics.run_diagnostics` | `DiagnosticsReport` |
+
+O `NowcastTracker` (0.2.0) tem a coluna `released_share`: parcela das observações do
+período-alvo dos preditores do modelo (colunas de `results.data` menos o alvo)
+divulgadas em cada vintage.
 
 `news`/`nowcast_tracker`/`level_contributions` exigem modelos de espaço de estados
 suportados (`MixedFreqDFM` em qualquer grade, inclusive de calendário; `TwoStepDFM` com
@@ -374,17 +386,17 @@ Sem interações/transformações.
 | `selection/` | `bai_ng_factors.py`, `bai_ng_shocks.py`, `targeted.py`, `blocks.py`, `_panel.py`, `_plot.py` | `select_factors`, `select_shocks`, preditores *targeted*, `select_blocks`/`select_variables` (I7, RMSFE pseudo tempo-real) | core, evaluation (preguiçoso) | `tests/selection/` |
 | `vintages/` | `pseudo_real_time.py`, `calendar.py`, `vintage_store.py`, `_utils.py` | `pseudo_real_time`, `ReleaseCalendar`, `VintageStore.as_of` | core | `tests/vintages/` |
 | `news/` | `decomposition.py`, `revisions.py`, `contributions.py`, `tracker.py`, `_linear.py`, `_model.py`, `plotting.py` | *news* (Bańbura-Modugno) por série/bloco/categoria/divulgação, revisões, reestimação, *nowcast tracker*, contribuições ao nível, suavizador linear em lote, registro de plots próprio | core, statespace, models (resultados) | `tests/news/` |
-| `density/` | `distribution.py`, `bootstrap.py`, `predictive.py` | `NowcastDistribution` (gaussiana/mistura), bootstrap paramétrico e por blocos com reestimação, `nowcast_distribution` (I5) | core, statespace, models | `tests/density/` |
+| `density/` | `distribution.py`, `bootstrap.py`, `predictive.py`, `empirical.py` | `NowcastDistribution` (gaussiana/mistura), bootstrap paramétrico e por blocos com reestimação, `nowcast_distribution` (I5); bandas de erro empírico (`empirical_bands`, `EmpiricalGaussianDistribution`, `EmpiricalQuantileDistribution`, Reifschneider-Tulip/BCE; 0.2.0) | core, statespace, models | `tests/density/` |
 | `benchmarks/` | `ar.py`, `random_walk.py`, `mean.py`, `bridge.py`, `midas.py`, `sklearn_adapter.py`, `_base.py`, `_utils.py` | AR(p), RW, média, bridge, U-MIDAS, MIDAS (Almon/Beta), adaptador scikit-learn (I11) — `BaseBenchmark` | core, models.bridge (`BridgeEquation`, `ar_extend`, `aggregate_to_target`, `resolve_aggregation_weights`) | `tests/benchmarks/` |
-| `evaluation/` | `backtest.py`, `metrics.py`, `tests.py`, `scoring.py` | `PseudoRealTimeBacktest` / `BacktestResults`, RMSFE/MAE por horizonte, DM (HLN), GW, MCS; scores de densidade (CRPS, log score, PIT, Berkowitz, KS, cobertura, Christoffersen, quantile score) | core, vintages, benchmarks (`SklearnBenchmark`) | `tests/evaluation/` |
-| `diagnostics/` | `stability.py`, `convergence.py`, `contribution.py`, `data_quality.py`, `residuals.py`, `report.py`, `_common.py` | estabilidade das cargas (Breitung-Eickmeier), convergência do EM, contribuição dos fatores, qualidade dos dados, Ljung-Box/Jarque-Bera, `run_diagnostics -> DiagnosticsReport` (I9) | core, preprocessing (outliers, pesos de agregação), models (resultados, *duck typing*) | `tests/diagnostics/` |
+| `evaluation/` | `backtest.py`, `metrics.py`, `tests.py`, `scoring.py` | `PseudoRealTimeBacktest` / `BacktestResults`, RMSFE/MAE por horizonte, DM (HLN), GW, MCS, Clark-West; FDA + Pesaran-Timmermann (coluna opcional `previous_actual`, `previous="vintage"\|"final"`) e `periods=` (subperíodos, atalhos `"covid"`/`"ex-covid"`) nos métodos de `BacktestResults` (0.2.0); scores de densidade (CRPS, log score, PIT, Berkowitz, KS, cobertura, Christoffersen, quantile score) | core, vintages, benchmarks (`SklearnBenchmark`) | `tests/evaluation/` |
+| `diagnostics/` | `stability.py`, `convergence.py`, `contribution.py`, `data_quality.py`, `residuals.py`, `report.py`, `zscores.py`, `_common.py` | estabilidade das cargas (Breitung-Eickmeier), convergência do EM, contribuição dos fatores, qualidade dos dados, Ljung-Box/Jarque-Bera, `run_diagnostics -> DiagnosticsReport` (I9); `indicator_zscores -> IndicatorZScores` (z-scores com suavização Mariano-Murasawa, por série/grupo, `as_of=`; 0.2.0) | core, preprocessing (outliers, pesos de agregação), models (resultados, *duck typing*) | `tests/diagnostics/` |
 | `data_sources/` | `bcb.py`, `ibge.py`, `ipea.py`, `fred.py`, `cache.py`, `_http.py`, `_parsing.py` | conectores HTTPS com cache (testes com mocks; rede marcada `network`); SIDRA com `dash_as` | core | `tests/data_sources/` |
 | `datasets/` | `dataset.py`, `load.py`, `_io.py`, `_simulated.py`, `metadata/*.yaml`, `data/*.csv.gz` | `Dataset` + loaders (`load_brazil_nowcast`, `load_brazil_calendar`, `load_brazil_vintages`, `load_us_fred_md`, `load_nyfed`, `load_us_grs_like`, `load_simulated_dfm`); scripts em `scripts/build_datasets/` | core, vintages | `tests/datasets/` |
 | `simulate/` | `dfm.py` | `dfm()` (mensal + trimestral) e `weekly_dfm()` (semanal + mensal + trimestral) → `SimulatedDFM(data, truth)` | core, datasets, preprocessing | `tests/simulate/` |
-| `visualization/` | `themes.py`, `_common.py`, `forecast.py`, `factors.py`, `data_flow.py`, `selection.py`, `news.py`, `evaluation.py`, `diagnostics.py`, `registry.py` | Plotly + Matplotlib, temas; registra os plots de §5 (resultados e objetos de *news*) | core, models (classes de resultado), news (registro) | `tests/visualization/` |
-| `reports/` | `html.py`, `templates/nowcast_report.html` | `NowcastReport` (Jinja2 + Plotly): manchete, trajetória, *news*/*tracker*, fluxo de dados, diagnósticos (`diagnostics=True`) | core, visualization, diagnostics (preguiçoso) | `tests/reports/` |
-| `experiment/` | `experiment.py` | `NowcastExperiment` (comparação; backtest padrão = `PseudoRealTimeBacktest`) | core, models, evaluation (preguiçoso), visualization | `tests/experiment/` |
-| `pipeline/` | `spec.py`, `data.py`, `runner.py`, `snapshots.py`, `examples.py`, `templates/*.yaml` | `NowcastSpec`/`load_spec` (YAML validado), `run_pipeline` → `PipelineRun`, `SnapshotStore` (snapshots versionados, histórico, diff), modelos de spec (I10) | todos | `tests/pipeline/` |
+| `visualization/` | `themes.py`, `_common.py`, `forecast.py`, `factors.py`, `data_flow.py`, `heatmap.py`, `selection.py`, `news.py`, `evaluation.py`, `diagnostics.py`, `registry.py` | Plotly + Matplotlib, temas; registra os plots de §5 (resultados e objetos de *news*) | core, models (classes de resultado), news (registro) | `tests/visualization/` |
+| `reports/` | `html.py`, `templates/nowcast_report.html` | `NowcastReport` (Jinja2 + Plotly): manchete, trajetória, *news*/*tracker*, fluxo de dados, diagnósticos (`diagnostics=True`); 0.2.0: `bands=`, `alternatives=`, `heatmap=`, `backtest_metrics=`, parcela de dados divulgados | core, visualization, diagnostics (preguiçoso) | `tests/reports/` |
+| `experiment/` | `experiment.py`, `alternatives.py` | `NowcastExperiment` (comparação; backtest padrão = `PseudoRealTimeBacktest`); `alternative_models -> AlternativeNowcasts` (sem 1–2 grupos, `refit=True\|False`; 0.2.0) | core, models, evaluation (preguiçoso), visualization | `tests/experiment/` |
+| `pipeline/` | `spec.py`, `data.py`, `runner.py`, `snapshots.py`, `examples.py`, `templates/*.yaml`, `templates/example.xlsx` | `NowcastSpec`/`load_spec` (YAML validado), `run_pipeline` → `PipelineRun`, `SnapshotStore` (snapshots versionados, histórico, diff), modelos de spec (I10); 0.2.0: fonte `excel` (extra `[excel]`), saídas `empirical_bands`, `heatmap`, `alternatives`, `excel`, `backtest.metrics`/`backtest.periods` | todos | `tests/pipeline/` |
 | `cli/` | `main.py`, `__main__.py` | `nowcastbox run|validate|init|datasets|snapshots` (códigos de saída 0/1/2) | pipeline | `tests/cli/` |
 | `api.py` | — | `nb.nowcast(..., idiosyncratic=, long_run_mean=, outliers=, density=, n_boot=)`, `add_density`; `preprocess=` não limpa o alvo (salvo `clean_target=True`); grades de calendário só com `method="em"` | models, selection, preprocessing, density | `tests/test_api.py` |
 | `__init__.py` (topo) | — | API pública (subpacotes + entradas principais) — **somente etapa de integração** | todos | `tests/test_package.py`, `tests/test_api.py` |

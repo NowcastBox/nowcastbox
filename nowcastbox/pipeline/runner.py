@@ -9,7 +9,10 @@
    when ``factors: auto``);
 4. produce the requested outputs: density nowcast (I5), news decomposition against the
    previous snapshot or an earlier vintage (Bańbura & Modugno, 2014; I6), DFM
-   diagnostics (I9), pseudo real-time backtest and the HTML report;
+   diagnostics (I9), pseudo real-time backtest (accuracy by horizon and sub-period,
+   directional accuracy), empirical error bands, the indicator z-score heatmap, the
+   nowcasts of alternative models without one or two groups of indicators, the HTML
+   report and an Excel workbook;
 5. freeze everything in a versioned snapshot (:class:`~nowcastbox.pipeline.snapshots.SnapshotStore`).
 
 The result is a :class:`PipelineRun` holding every intermediate object.
@@ -35,9 +38,13 @@ from nowcastbox.core.results import NowcastResults
 from nowcastbox.pipeline.data import apply_vintage, data_hash, load_data, preprocess
 from nowcastbox.pipeline.snapshots import Snapshot, SnapshotStore, headline_period, jsonable
 from nowcastbox.pipeline.spec import (
+    AlternativesOutput,
     BacktestOutput,
     DensityOutput,
     DiagnosticsOutput,
+    EmpiricalBandsOutput,
+    ExcelOutput,
+    HeatmapOutput,
     NewsOutput,
     NowcastSpec,
     ReportOutput,
@@ -84,10 +91,22 @@ class PipelineRun:
         DFM diagnostics (``diagnostics`` output).
     backtest : BacktestResults, optional
         Pseudo real-time backtest (``backtest`` output).
+    backtest_metrics : pandas.DataFrame, optional
+        Accuracy table of the backtest (``outputs.backtest.metrics`` by horizon and,
+        with ``outputs.backtest.periods``, by sub-period).
+    empirical_bands : EmpiricalGaussianDistribution or EmpiricalQuantileDistribution, optional
+        Empirical error bands around the nowcast (``empirical_bands`` output).
+    heatmap : IndicatorZScores, optional
+        Z-scores of the indicators (``heatmap`` output).
+    alternatives : AlternativeNowcasts, optional
+        Nowcasts of the alternative models (``alternatives`` output).
     report_html : str, optional
         HTML report (``report_html`` output).
     report_path : pathlib.Path, optional
         Where the report was written (snapshot or ``outputs.report_html.path``).
+    excel_paths : tuple of pathlib.Path
+        Excel workbooks written (``excel`` output: ``outputs.excel.path`` and the
+        snapshot's ``results.xlsx``).
     snapshot : Snapshot, optional
         Snapshot written for this run.
     previous : Snapshot, optional
@@ -125,8 +144,13 @@ class PipelineRun:
     news_reference: str | None = None
     diagnostics: Any = None
     backtest: Any = None
+    backtest_metrics: pd.DataFrame | None = None
+    empirical_bands: Any = None
+    heatmap: Any = None
+    alternatives: Any = None
     report_html: str | None = None
     report_path: Path | None = None
+    excel_paths: tuple[Path, ...] = ()
     snapshot: Snapshot | None = None
     previous: Snapshot | None = None
     warnings: tuple[str, ...] = ()
@@ -179,12 +203,47 @@ class PipelineRun:
             table = self.backtest.rmsfe_by_horizon()
             lines.append("  backtest    : RMSFE by horizon")
             lines += ["    " + row for row in table.to_string(float_format=_fmt).splitlines()]
+        lines += self._phase_lines()
         if self.snapshot is not None:
             lines.append(f"  snapshot    : {self.snapshot.path}")
         if self.report_path is not None:
             lines.append(f"  report      : {self.report_path}")
         lines += [f"  warning     : {w}" for w in self.warnings]
         return "\n".join(lines)
+
+    def _phase_lines(self) -> list[str]:
+        """Summary lines of the empirical bands, heatmap and alternative models."""
+        lines = [*self._empirical_band_line(), *self._alternatives_line()]
+        if self.heatmap is not None:
+            lines.append(f"  heatmap     : z-scores of {len(self.heatmap.series)} indicators")
+        if self.excel_paths:
+            lines.append(f"  excel       : {', '.join(str(p) for p in self.excel_paths)}")
+        return lines
+
+    def _empirical_band_line(self) -> list[str]:
+        bands = self.empirical_bands
+        if bands is None or self.headline_period is None:
+            return []
+        level = max(bands.levels)
+        table = bands.interval(level)
+        labels = [str(p) for p in table.index]
+        if str(self.headline_period) not in labels:
+            return []
+        row = table.iloc[labels.index(str(self.headline_period))]
+        return [f"  emp. bands  : {100 * level:g}% [{_fmt(row['lower'])}, {_fmt(row['upper'])}]"]
+
+    def _alternatives_line(self) -> list[str]:
+        if self.alternatives is None or self.headline_period is None:
+            return []
+        table = self.alternatives.range()
+        labels = [str(p) for p in table.index]
+        if str(self.headline_period) not in labels:
+            return []
+        row = table.iloc[labels.index(str(self.headline_period))]
+        return [
+            f"  alternatives: {self.alternatives.n_models} models, range "
+            f"[{_fmt(row['min'])}, {_fmt(row['max'])}]"
+        ]
 
     def _band_text(self) -> str:
         frame = self.results.nowcast
@@ -254,6 +313,7 @@ class PipelineRun:
                 "snapshot": None if self.snapshot is None else self.snapshot.id,
                 "snapshot_path": None if self.snapshot is None else self.snapshot.path,
                 "report_path": self.report_path,
+                "excel_paths": list(self.excel_paths),
                 "outputs": self.spec.outputs.names,
                 "warnings": self.warnings,
                 "timings": self.timings,
@@ -323,6 +383,10 @@ class _State:
     news_reference: str | None = None
     diagnostics: Any = None
     backtest: Any = None
+    backtest_metrics: pd.DataFrame | None = None
+    bands: Any = None
+    zscores: Any = None
+    alternatives: Any = None
     report_html: str | None = None
     report_path: Path | None = None
 
@@ -371,7 +435,8 @@ def run_pipeline(
     information sets (old vintage stored in the snapshot, new vintage of this run), so
     the revision of the headline nowcast splits exactly into data revisions and the
     news of each release (Bańbura & Modugno, 2014). Failures of optional outputs
-    (news, diagnostics, backtest, report) do not stop the run: they are recorded in
+    (news, diagnostics, backtest, empirical bands, heatmap, alternative models, report,
+    Excel workbook) do not stop the run: they are recorded in
     :attr:`PipelineRun.warnings`.
 
     Examples
@@ -422,7 +487,7 @@ def run_pipeline(
             snap = _write_snapshot(store, state, period, notes)
             if state.report_html is not None and state.report_path is None:
                 state.report_path = snap.report_path
-    return PipelineRun(
+    run = PipelineRun(
         spec=parsed,
         vintage=state.vintage,
         data=state.data,
@@ -436,6 +501,10 @@ def run_pipeline(
         news_reference=state.news_reference,
         diagnostics=state.diagnostics,
         backtest=state.backtest,
+        backtest_metrics=state.backtest_metrics,
+        empirical_bands=state.bands,
+        heatmap=state.zscores,
+        alternatives=state.alternatives,
         report_html=state.report_html,
         report_path=state.report_path,
         snapshot=snap,
@@ -443,6 +512,31 @@ def run_pipeline(
         warnings=tuple(notes),
         timings=timer.timings,
     )
+    if parsed.outputs.excel is not None:
+        with timer.stage("excel"):
+            run = _excel(run, parsed.outputs.excel)
+    return run
+
+
+def _excel(run: PipelineRun, options: ExcelOutput) -> PipelineRun:
+    """Write the run's workbook(s); a failure is recorded as a warning of the run."""
+    from nowcastbox.pipeline.data import write_run_excel
+
+    targets = [options.path] if options.path is not None else []
+    if run.snapshot is not None:
+        targets.append(run.snapshot.path / "results.xlsx")
+    written: list[Path] = []
+    try:
+        written = [write_run_excel(run, target) for target in targets]
+    except ImportError as err:
+        note = f"excel output skipped: {err}"
+        logger.warning("%s", note)
+        return dataclasses.replace(run, warnings=(*run.warnings, note))
+    if not targets:
+        note = "excel output skipped: give outputs.excel.path or a snapshot_dir"
+        logger.warning("%s", note)
+        return dataclasses.replace(run, warnings=(*run.warnings, note))
+    return dataclasses.replace(run, excel_paths=tuple(written))
 
 
 def _dedupe(items: list[str]) -> list[str]:
@@ -534,6 +628,9 @@ def _outputs(state: _State, timer: _Timer) -> None:
         ("news", outputs.news, _news),
         ("diagnostics", outputs.diagnostics, _diagnostics),
         ("backtest", outputs.backtest, _backtest),
+        ("empirical_bands", outputs.empirical_bands, _empirical_bands),
+        ("heatmap", outputs.heatmap, _heatmap),
+        ("alternatives", outputs.alternatives, _alternatives),
         ("report_html", outputs.report_html, _report),
     ]
     for name, options, stage in stages:
@@ -624,17 +721,79 @@ def _backtest(state: _State, options: BacktestOutput) -> None:
         preprocess=lambda vintage: preprocess(vintage, state.spec),
     )
     state.backtest = backtest.run()
+    state.backtest_metrics = state.backtest.metrics(
+        metrics=options.metrics, periods=options.periods
+    )
+
+
+def _empirical_bands(state: _State, options: EmpiricalBandsOutput) -> None:
+    from nowcastbox.density import empirical_bands
+
+    if state.backtest is None:
+        state.notes.append("empirical_bands output skipped: the backtest output failed")
+        return
+    state.bands = empirical_bands(
+        state.results,
+        state.backtest,
+        vintage=state.vintage,
+        window=options.window,
+        method=cast("Any", options.method),
+        levels=options.levels,
+        outliers=cast("Any", options.outliers),
+        min_errors=options.min_errors,
+        availability=cast("Any", options.availability),
+    )
+
+
+def _heatmap(state: _State, options: HeatmapOutput) -> None:
+    from nowcastbox.diagnostics import indicator_zscores
+
+    panel = state.panel
+    target = state.spec.target_name
+    state.zscores = indicator_zscores(
+        panel,
+        smooth=options.smooth,
+        window=options.window,
+        by=options.by,
+        series=[c for c in panel.columns if c != target],
+    )
+
+
+def _alternatives(state: _State, options: AlternativesOutput) -> None:
+    from nowcastbox.experiment import alternative_models
+
+    data = state.results.data if state.results.data is not None else state.panel
+    if options.refit:
+        model: Any = state.spec.model.estimator_class(**state.results.model_params)
+    else:
+        model = state.results
+    fit_kwargs = {"horizon": state.spec.model.horizon} if state.spec.model.method == "em" else None
+    state.alternatives = alternative_models(
+        model,
+        data,
+        state.spec.target_name,
+        by=options.by,
+        drop=options.drop,
+        refit=options.refit,
+        fit_kwargs=fit_kwargs,
+    )
 
 
 def _report(state: _State, options: ReportOutput) -> None:
     from nowcastbox.reports import NowcastReport
 
+    heatmap = state.spec.outputs.heatmap
     report = NowcastReport(
         state.results,
         title=options.title or f"Nowcast of {state.spec.target_name} ({state.spec.name})",
         news=state.news,
         quantiles=state.distribution,
         backtest=state.backtest,
+        backtest_metrics=state.backtest_metrics,
+        bands=state.bands,
+        alternatives=state.alternatives,
+        heatmap=state.zscores,
+        heatmap_last=24 if heatmap is None else heatmap.last,
         diagnostics=state.diagnostics if state.diagnostics is not None else False,
         author=options.author,
         notes=options.notes,
@@ -667,6 +826,7 @@ def _write_snapshot(
     if state.backtest is not None:
         tables["backtest"] = state.backtest.to_frame()
         tables["backtest_rmsfe"] = state.backtest.rmsfe_by_horizon()
+    tables.update(_phase_tables(state))
     if state.report_html is not None:
         texts["report.html"] = state.report_html
     news_table = None
@@ -693,6 +853,23 @@ def _write_snapshot(
         warnings=notes,
         metadata={"nowcastbox_version": _version(), "outputs": list(state.spec.outputs.names)},
     )
+
+
+def _phase_tables(state: _State) -> dict[str, pd.DataFrame]:
+    """Tables of the accuracy, bands, heatmap and alternative-model outputs."""
+    tables: dict[str, pd.DataFrame] = {}
+    if state.backtest_metrics is not None:
+        tables["backtest_metrics"] = state.backtest_metrics
+    if state.bands is not None:
+        tables["empirical_bands"] = state.bands.to_frame()
+    if state.zscores is not None:
+        tables["heatmap"] = state.zscores.zscores
+        if state.zscores.groups is not None:
+            tables["heatmap_groups"] = state.zscores.groups
+    if state.alternatives is not None:
+        tables["alternatives"] = state.alternatives.table()
+        tables["alternatives_range"] = state.alternatives.range()
+    return tables
 
 
 def _params(results: NowcastResults) -> dict[str, Any]:

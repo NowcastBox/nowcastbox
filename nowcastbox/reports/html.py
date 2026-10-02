@@ -5,17 +5,20 @@
 results, all as plain pandas objects) into one HTML file with the sections
 
 ``headline``
-    The current nowcast, its period and prediction intervals.
+    The current nowcast, its period, prediction intervals and empirical error bands.
 ``path``
-    Observed target, in-sample fit and out-of-sample estimates (chart + table), and
-    the fan chart when quantiles are available.
+    Observed target, in-sample fit and out-of-sample estimates (chart + table), the
+    fan chart when quantiles are available, the empirical error bands and the range of
+    the nowcasts of alternative models (without one or two groups of indicators).
 ``news``
     News waterfall and table, nowcast tracker (placeholders when not supplied).
 ``data_flow``
-    Ragged-edge heatmap and per-series release status.
+    Ragged-edge heatmap, share of the nowcast period's data already released,
+    per-series release status and the z-score heatmap of the indicators.
 ``diagnostics``
-    Estimation summary, factor charts, EM convergence, backtest RMSFE and a
-    placeholder for further model diagnostics.
+    Estimation summary, factor charts, EM convergence, backtest RMSFE and accuracy
+    table (by horizon and sub-period, directional accuracy) and a placeholder for
+    further model diagnostics.
 
 By default plotly.js is embedded inline, so the file works offline (about 4.5 MB);
 ``plotlyjs="cdn"`` gives a small file that loads plotly.js from the CDN.
@@ -43,15 +46,18 @@ from nowcastbox.visualization import (
     news_waterfall_table,
     plot_data_availability,
     plot_eigenvalues,
+    plot_empirical_bands,
     plot_factors,
     plot_fan_chart,
     plot_forecast,
+    plot_indicator_heatmap,
     plot_loadings,
     plot_loglikelihood,
     plot_news_waterfall,
     plot_nowcast_tracker,
     plot_rmsfe_by_horizon,
     release_table,
+    released_share_table,
     rmsfe_frame,
 )
 from nowcastbox.visualization.themes import Theme, get_theme
@@ -132,6 +138,25 @@ def _table(frame: pd.DataFrame, caption: str, *, digits: int = 3) -> dict[str, A
     }
 
 
+def _str_index(frame: pd.DataFrame) -> pd.DataFrame:
+    """Copy with the (period) index as text."""
+    out = frame.copy()
+    out.index = pd.Index([str(p) for p in out.index], name=out.index.name or "period")
+    return out
+
+
+def _flat_index(frame: pd.DataFrame) -> pd.DataFrame:
+    """Copy with MultiIndex rows/columns joined into text labels (``"Covid | 1"``)."""
+    out = frame.copy()
+    if isinstance(out.index, pd.MultiIndex):
+        name = " | ".join(str(n) for n in out.index.names if n is not None)
+        labels = [" | ".join(str(v) for v in key) for key in out.index]
+        out.index = pd.Index(labels, name=name)
+    if isinstance(out.columns, pd.MultiIndex):
+        out.columns = pd.Index([" | ".join(str(v) for v in key) for key in out.columns])
+    return out
+
+
 class NowcastReport:
     """HTML report of a nowcast.
 
@@ -165,6 +190,24 @@ class NowcastReport:
         reported as a note).
     backtest_reference : str, optional
         Model used for relative RMSFE in the backtest chart.
+    backtest_metrics : pandas.DataFrame, optional
+        Accuracy table to show in the diagnostics section, e.g.
+        ``backtest.metrics(metrics=("rmsfe", "fda", "n"), periods="covid")``.
+    bands : EmpiricalGaussianDistribution or EmpiricalQuantileDistribution, optional
+        Empirical error bands (:func:`~nowcastbox.density.empirical_bands`): headline
+        tiles, a fan chart at the band levels and a table.
+    alternatives : AlternativeNowcasts, optional
+        Nowcasts of alternative models
+        (:func:`~nowcastbox.experiment.alternative_models`): chart and range table.
+    heatmap : IndicatorZScores or bool, optional
+        Z-score heatmap of the indicators in the data-flow section: an
+        :class:`~nowcastbox.diagnostics.IndicatorZScores`, or ``True`` to compute it from
+        the results' data (target excluded).
+    heatmap_last : int, default 24
+        Number of most recent periods in the heatmap.
+    released_share : bool, default True
+        Show the share of the nowcast period's predictor data already released (by
+        category) in the data-flow section.
     author : str, optional
         Shown in the header.
     notes : str, optional
@@ -216,6 +259,12 @@ class NowcastReport:
         quantiles: Any = None,
         backtest: Any = None,
         backtest_reference: str | None = None,
+        backtest_metrics: pd.DataFrame | None = None,
+        bands: Any = None,
+        alternatives: Any = None,
+        heatmap: Any = None,
+        heatmap_last: int = 24,
+        released_share: bool = True,
         diagnostics: Any = None,
         author: str | None = None,
         notes: str | None = None,
@@ -229,8 +278,8 @@ class NowcastReport:
             raise TypeError(f"results must be NowcastResults; got {type(results).__name__}.")
         if plotlyjs not in ("inline", "cdn"):
             raise ValueError(f"plotlyjs must be 'inline' or 'cdn'; got {plotlyjs!r}.")
-        if n_periods < 1 or data_flow_periods < 1:
-            raise ValueError("n_periods and data_flow_periods must be >= 1.")
+        if n_periods < 1 or data_flow_periods < 1 or heatmap_last < 1:
+            raise ValueError("n_periods, data_flow_periods and heatmap_last must be >= 1.")
         self.results = results
         self.title = title or f"Nowcast report: {results.target}"
         self.news = news
@@ -241,6 +290,12 @@ class NowcastReport:
         self.quantiles = quantiles
         self.backtest = backtest
         self.backtest_reference = backtest_reference
+        self.backtest_metrics = backtest_metrics
+        self.bands = bands
+        self.alternatives = alternatives
+        self.heatmap = heatmap
+        self.heatmap_last = heatmap_last
+        self.released_share = released_share
         self.diagnostics = diagnostics
         self.author = author
         self.notes = notes
@@ -327,6 +382,7 @@ class NowcastReport:
                 sec["tiles"].append(
                     {"label": "Std. deviation", "value": _fmt(row["std"]), "hero": False}
                 )
+            sec["tiles"] += self._band_tiles(period)
         last = frame["observed"].last_valid_index()
         if last is not None:
             sec["tiles"].append(
@@ -345,6 +401,26 @@ class NowcastReport:
         sec["text"] = self.notes or ""
         return sec
 
+    def _band_tiles(self, period: pd.Period) -> list[dict[str, Any]]:
+        """Headline tiles of the empirical error bands at the nowcast period."""
+        if self.bands is None:
+            return []
+        tiles = []
+        for level in self.bands.levels:
+            band = self.bands.interval(level)
+            labels = [str(p) for p in band.index]
+            if str(period) not in labels:
+                return []
+            row = band.iloc[labels.index(str(period))]
+            tiles.append(
+                {
+                    "label": f"{100 * level:g}% empirical band",
+                    "value": f"[{_fmt(row['lower'])}, {_fmt(row['upper'])}]",
+                    "hero": False,
+                }
+            )
+        return tiles
+
     def _news_level(self, name: str, explicit: float | None) -> float | None:
         if explicit is not None:
             return explicit
@@ -360,11 +436,26 @@ class NowcastReport:
                     plot_fan_chart, self.quantiles, observed=self.results.observed.dropna()
                 )
             )
+        if self.bands is not None:
+            items.append(
+                self._try_figure(
+                    plot_empirical_bands, self.bands, observed=self.results.observed.dropna()
+                )
+            )
+        if self.alternatives is not None:
+            items.append(self._try_figure(self.alternatives.plot))
         self._collect(items, sec)
         cols = [c for c in self.results.nowcast.columns if c != "common"]
         table = self.results.nowcast[cols].iloc[-self.n_periods :].copy()
         table.index = pd.Index([str(p) for p in table.index], name="period")
         sec["tables"].append(_table(table, f"Last {len(table)} periods"))
+        if self.bands is not None:
+            sec["tables"].append(_table(_str_index(self.bands.to_frame()), "Empirical error bands"))
+        if self.alternatives is not None:
+            rng = self.alternatives.range().drop(columns=["min_model", "max_model"])
+            sec["tables"].append(
+                _table(_str_index(rng), "Nowcasts of alternative models (without 1-2 groups)")
+            )
         return sec
 
     def _news_section(self) -> dict[str, Any]:
@@ -407,8 +498,36 @@ class NowcastReport:
             ],
             sec,
         )
+        self._released_share(sec)
         sec["tables"].append(_table(release_table(self.results), "Release status by series"))
+        self._heatmap(sec)
         return sec
+
+    def _released_share(self, sec: dict[str, Any]) -> None:
+        """Share of the nowcast period's predictor data already released, by category."""
+        period = nowcast_period(self.results)
+        data = self.results.data
+        if not self.released_share or period is None or data is None:
+            return
+        predictors = [c for c in data.columns if c != self.results.target]
+        try:
+            share = released_share_table(data, period, by="category", series=predictors)
+        except (ValueError, TypeError) as exc:
+            sec["placeholders"].append(f"Released-data share not available: {exc}")
+            return
+        sec["tables"].append(_table(share, f"Share of the {period} data already released"))
+
+    def _heatmap(self, sec: dict[str, Any]) -> None:
+        """Z-score heatmap of the indicators (requested with ``heatmap=``)."""
+        if self.heatmap is None or self.heatmap is False:
+            return
+        source: Any = self.heatmap
+        kwargs: dict[str, Any] = {"last": self.heatmap_last}
+        if source is True:
+            data = self.results.data
+            source = data
+            kwargs["series"] = [c for c in data.columns if c != self.results.target]  # type: ignore[union-attr]
+        self._collect([self._try_figure(plot_indicator_heatmap, source, **kwargs)], sec)
 
     def _diagnostics(self) -> dict[str, Any]:
         res = self.results
@@ -453,6 +572,8 @@ class NowcastReport:
                 sec["tables"].append(_table(rmsfe_frame(self.backtest), "RMSFE by horizon"))
             except (ValueError, TypeError) as exc:
                 sec["placeholders"].append(f"Backtest table not available: {exc}")
+        if self.backtest_metrics is not None:
+            sec["tables"].append(_table(_flat_index(self.backtest_metrics), "Backtest accuracy"))
         self._collect(items, sec)
         sec["pre"] = res.summary()
         self._dfm_diagnostics(sec)

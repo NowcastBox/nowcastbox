@@ -17,6 +17,7 @@ MODULES = [
     "nowcastbox.diagnostics.report",
     "nowcastbox.diagnostics.residuals",
     "nowcastbox.diagnostics.stability",
+    "nowcastbox.diagnostics.zscores",
 ]
 
 

@@ -4,7 +4,7 @@ Subcommands::
 
     nowcastbox run SPEC.yaml [--snapshot-dir DIR] [--no-snapshot] [--vintage DATE] [--json]
     nowcastbox validate SPEC.yaml [--check-data] [--show]
-    nowcastbox init [PATH] [--template NAME] [--force] [--list]
+    nowcastbox init [PATH] [--template NAME] [--force] [--list] [--excel [--example]]
     nowcastbox datasets list | info NAME
     nowcastbox snapshots list|show|diff|history LOCATION ...
     nowcastbox --version
@@ -124,17 +124,49 @@ def _cmd_init(args: argparse.Namespace) -> int:
     if args.list:
         _out("\n".join(list_templates()))
         return EXIT_OK
+    if args.excel:
+        return _init_excel(args)
+    if args.example:
+        raise _CommandError("--example is only valid with --excel.", EXIT_USAGE)
     try:
         text = template_text(args.template)
     except ValueError as err:
         raise _CommandError(str(err), EXIT_USAGE) from err
-    path = Path(args.path)
-    if path.exists() and not args.force:
-        raise _CommandError(f"{path} already exists (use --force to overwrite).", EXIT_USAGE)
+    path = Path(args.path or "nowcast.yaml")
+    _check_new(path, args.force)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     _out(f"Wrote example spec {path} (template {args.template!r}).")
     _out(f"Next: nowcastbox validate {path} && nowcastbox run {path}")
+    return EXIT_OK
+
+
+def _check_new(path: Path, force: bool) -> None:
+    if path.exists() and not force:
+        raise _CommandError(f"{path} already exists (use --force to overwrite).", EXIT_USAGE)
+
+
+def _init_excel(args: argparse.Namespace) -> int:
+    """Write an Excel data template (empty, or the bundled example with ``--example``)."""
+    import shutil
+
+    from nowcastbox.pipeline.data import example_workbook_path, write_excel_panel
+
+    path = Path(args.path or "nowcast.xlsx")
+    if path.suffix.lower() not in (".xlsx", ".xlsm"):
+        raise _CommandError(f"{path} is not an .xlsx file.", EXIT_USAGE)
+    _check_new(path, args.force)
+    if args.example:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(example_workbook_path(), path)
+        _out(f"Wrote example Excel workbook {path}.")
+    else:
+        try:
+            write_excel_panel(path)
+        except ImportError as err:
+            raise _CommandError(str(err)) from err
+        _out(f"Wrote empty Excel data template {path} (sheets monthly, quarterly, metadata).")
+    _out(f"Use it in a spec: data: {{source: excel, path: {path.name}}}")
     return EXIT_OK
 
 
@@ -304,11 +336,22 @@ def _add_validate(sub: Any) -> None:
 def _add_init(sub: Any) -> None:
     from nowcastbox.pipeline import DEFAULT_TEMPLATE
 
-    p = sub.add_parser("init", help="write an example spec")
-    p.add_argument("path", nargs="?", default="nowcast.yaml", help="output file (nowcast.yaml)")
+    p = sub.add_parser("init", help="write an example spec (or an Excel data template)")
+    p.add_argument(
+        "path",
+        nargs="?",
+        default=None,
+        help="output file (nowcast.yaml; nowcast.xlsx with --excel)",
+    )
     p.add_argument("-t", "--template", default=DEFAULT_TEMPLATE, help="template name")
     p.add_argument("-f", "--force", action="store_true", help="overwrite an existing file")
     p.add_argument("--list", action="store_true", help="list the templates")
+    p.add_argument(
+        "--excel", action="store_true", help="write an empty Excel data template (.xlsx)"
+    )
+    p.add_argument(
+        "--example", action="store_true", help="with --excel: the filled example workbook"
+    )
     p.set_defaults(handler=_cmd_init)
 
 

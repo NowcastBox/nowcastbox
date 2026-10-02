@@ -149,6 +149,7 @@ nav:
           - Transformations: user-guide/data/transformations.md
           - Outliers and missing data: user-guide/data/outliers-missing.md
           - Aggregation and frequencies: user-guide/data/aggregation.md
+          - Share of released data: user-guide/data/released-share.md
       - Vintages:
           - Pseudo real-time data: user-guide/vintages/pseudo-real-time.md
           - Release calendar: user-guide/vintages/release-calendar.md
@@ -172,11 +173,13 @@ nav:
       - Density nowcasts:
           - Predictive distributions: user-guide/density/density-nowcasts.md
           - Scoring densities: user-guide/density/scoring.md
+          - Empirical error bands: user-guide/density/empirical-bands.md
       - Evaluation:
           - Backtesting: user-guide/evaluation/backtesting.md
           - Accuracy metrics: user-guide/evaluation/metrics.md
           - Forecast comparison tests: user-guide/evaluation/forecast-comparison-tests.md
           - Experiments: user-guide/evaluation/experiments.md
+          - Alternative models: user-guide/evaluation/alternative-models.md
       - Diagnostics: user-guide/diagnostics.md
       - Data sources:
           - user-guide/data-sources/index.md
@@ -186,6 +189,7 @@ nav:
           - FRED / ALFRED: user-guide/data-sources/fred.md
       - Visualization and reports:
           - Plots: user-guide/visualization/plots.md
+          - Indicator heatmap: user-guide/visualization/indicator-heatmap.md
           - HTML reports: user-guide/visualization/reports.md
       - Pipeline and CLI: user-guide/pipeline-cli.md
       - Performance: user-guide/performance.md

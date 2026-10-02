@@ -19,6 +19,13 @@ r"""Tests of equal predictive accuracy and the Model Confidence Set.
   \sim \chi^2_q` with :math:`Z_t = h_{t-h} d_t` (default instruments
   :math:`h_{t-h} = (1, d_{t-h})'`) and :math:`\hat\Omega` the sample second-moment
   matrix of :math:`Z_t` (Newey-West with :math:`h-1` lags for :math:`h > 1`).
+* :func:`pesaran_timmermann` - Pesaran & Timmermann (1992) test of directional
+  predictability: with :math:`\hat P` the share of correctly predicted signs of the
+  change, :math:`P_y`, :math:`P_x` the shares of positive actual and predicted
+  changes and :math:`P_* = P_y P_x + (1-P_y)(1-P_x)` the hit rate expected under
+  independence, :math:`S_n = (\hat P - \hat P_*) / \{\hat V(\hat P) -
+  \hat V(\hat P_*)\}^{1/2}` is asymptotically standard normal under :math:`H_0`
+  (no directional predictability).
 * :func:`model_confidence_set` - Model Confidence Set of Hansen, Lunde & Nason (2011)
   with the :math:`T_{\max,\mathcal M}` or :math:`T_{R,\mathcal M}` statistic, the
   corresponding elimination rules and a (circular) moving-block bootstrap
@@ -41,6 +48,12 @@ Giacomini, R. & White, H. (2006). Tests of conditional predictive ability.
 Hansen, P. R., Lunde, A. & Nason, J. M. (2011). The model confidence set.
 *Econometrica*, 79(2), 453-497.
 
+Pesaran, M. H. & Timmermann, A. (1992). A simple nonparametric test of predictive
+performance. *Journal of Business & Economic Statistics*, 10(4), 461-465.
+
+Blaskowitz, O. & Herwartz, H. (2011). On economic evaluation of directional forecasts.
+*International Journal of Forecasting*, 27(4), 1058-1065.
+
 Künsch, H. R. (1989). The jackknife and the bootstrap for general stationary
 observations. *Annals of Statistics*, 17(3), 1217-1241.
 
@@ -61,19 +74,26 @@ import pandas as pd
 from scipy import stats
 
 from nowcastbox.core.exceptions import DataQualityWarning, NowcastDataError
-from nowcastbox.evaluation.metrics import ArrayLike, LossLike, loss_values
+from nowcastbox.evaluation.metrics import (
+    ArrayLike,
+    LossLike,
+    directional_changes,
+    loss_values,
+)
 
 __all__ = [
     "ClarkWestResult",
     "DieboldMarianoResult",
     "GiacominiWhiteResult",
     "ModelConfidenceSetResult",
+    "PesaranTimmermannResult",
     "clark_west",
     "clark_west_differential",
     "clark_west_from_differential",
     "diebold_mariano",
     "giacomini_white",
     "model_confidence_set",
+    "pesaran_timmermann",
 ]
 
 _ALTERNATIVES = ("two-sided", "less", "greater")
@@ -898,3 +918,156 @@ def model_confidence_set(
         block_length=int(length),
         n_obs=int(n),
     )
+
+
+# ====================================================================== Pesaran-Timmermann
+@dataclass(frozen=True)
+class PesaranTimmermannResult:
+    r"""Result of :func:`pesaran_timmermann`.
+
+    Attributes
+    ----------
+    statistic : float
+        :math:`S_n` (positive: more correct directions than expected by chance).
+    pvalue : float
+        p-value under the chosen alternative (standard normal).
+    hit_rate : float
+        :math:`\hat P`, share of correctly predicted directions.
+    expected_hit_rate : float
+        :math:`\hat P_*`, hit rate expected if forecasts and outcomes were independent.
+    n_obs : int
+        Number of forecasts used.
+    alternative : str
+        ``"greater"`` (default: directional predictability), ``"two-sided"`` or
+        ``"less"``.
+
+    Examples
+    --------
+    >>> PesaranTimmermannResult(2.5, 0.006, 0.8, 0.5, 40, "greater").reject(0.05)
+    True
+    """
+
+    statistic: float
+    pvalue: float
+    hit_rate: float
+    expected_hit_rate: float
+    n_obs: int
+    alternative: str
+
+    def reject(self, alpha: float = 0.05) -> bool:
+        """Whether :math:`H_0` (no directional predictability) is rejected at ``alpha``.
+
+        Parameters
+        ----------
+        alpha : float, default 0.05
+            Significance level.
+
+        Returns
+        -------
+        bool
+            ``pvalue < alpha`` (False when the p-value is NaN).
+
+        Examples
+        --------
+        >>> PesaranTimmermannResult(0.2, 0.42, 0.55, 0.52, 40, "greater").reject()
+        False
+        """
+        return bool(self.pvalue < alpha)
+
+
+def _pt_statistic(up_actual: np.ndarray, up_forecast: np.ndarray) -> tuple[float, float, float]:
+    """Hit rate, expected hit rate and variance of their difference (PT 1992, eq. 3-6)."""
+    n = up_actual.size
+    hit = float(np.mean(up_actual == up_forecast))
+    p_y = float(np.mean(up_actual))
+    p_x = float(np.mean(up_forecast))
+    p_star = p_y * p_x + (1.0 - p_y) * (1.0 - p_x)
+    var_p = p_star * (1.0 - p_star) / n
+    var_star = (
+        (2.0 * p_y - 1.0) ** 2 * p_x * (1.0 - p_x) / n
+        + (2.0 * p_x - 1.0) ** 2 * p_y * (1.0 - p_y) / n
+        + 4.0 * p_y * p_x * (1.0 - p_y) * (1.0 - p_x) / n**2
+    )
+    return hit, p_star, var_p - var_star
+
+
+def pesaran_timmermann(
+    actual: ArrayLike,
+    forecast: ArrayLike,
+    previous: ArrayLike,
+    *,
+    alternative: str = "greater",
+) -> PesaranTimmermannResult:
+    r"""Pesaran-Timmermann (1992) test of directional forecast accuracy.
+
+    The direction of the actual change :math:`y_t - y^{p}_t` is compared with the
+    direction of the predicted change :math:`\hat y_t - y^{p}_t` (a change is "up"
+    when it is positive). Under :math:`H_0` the two directions are independent and
+    the expected hit rate is :math:`P_* = P_y P_x + (1-P_y)(1-P_x)`; the statistic
+
+    .. math::
+
+        S_n = \frac{\hat P - \hat P_*}{\sqrt{\hat V(\hat P) - \hat V(\hat P_*)}},
+        \quad \hat V(\hat P) = \frac{\hat P_*(1-\hat P_*)}{n},
+
+        \hat V(\hat P_*) = \frac{(2\hat P_y-1)^2 \hat P_x(1-\hat P_x)}{n}
+        + \frac{(2\hat P_x-1)^2 \hat P_y(1-\hat P_y)}{n}
+        + \frac{4 \hat P_y \hat P_x (1-\hat P_y)(1-\hat P_x)}{n^2},
+
+    is asymptotically standard normal. With continuous data the hit rate equals the
+    forecast directional accuracy :func:`~nowcastbox.evaluation.directional_accuracy`.
+
+    Parameters
+    ----------
+    actual, forecast, previous : array-like
+        Realisations, forecasts and previous values (triples with a NaN are dropped).
+    alternative : {"greater", "two-sided", "less"}, default "greater"
+        ``"greater"``: the forecasts predict the direction better than chance.
+
+    Returns
+    -------
+    PesaranTimmermannResult
+        Statistic, p-value, hit rate and expected hit rate.
+
+    Raises
+    ------
+    ValueError
+        If ``alternative`` is invalid or the inputs differ in length.
+    NowcastDataError
+        If fewer than 3 complete triples are available.
+
+    Warns
+    -----
+    DataQualityWarning
+        If the variance of the statistic is not positive (e.g. every forecast or
+        every outcome has the same direction); the statistic is then NaN.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from nowcastbox.evaluation import pesaran_timmermann
+    >>> rng = np.random.default_rng(0)
+    >>> change = rng.standard_normal(200)
+    >>> forecast = change + 0.5 * rng.standard_normal(200)
+    >>> res = pesaran_timmermann(change, forecast, np.zeros(200))
+    >>> res.hit_rate > 0.75, res.pvalue < 0.01
+    (True, True)
+    """
+    if alternative not in _ALTERNATIVES:
+        raise ValueError(f"alternative must be one of {_ALTERNATIVES}, got {alternative!r}.")
+    dy, dyhat = directional_changes(actual, forecast, previous)
+    n = dy.size
+    if n < 3:
+        raise NowcastDataError(f"The Pesaran-Timmermann test needs at least 3 forecasts, got {n}.")
+    hit, p_star, variance = _pt_statistic(dy > 0, dyhat > 0)
+    if variance <= 1e-15:
+        warnings.warn(
+            "Degenerate directions (no variation in the actual or predicted signs): the "
+            "Pesaran-Timmermann statistic is undefined.",
+            DataQualityWarning,
+            stacklevel=2,
+        )
+        return PesaranTimmermannResult(np.nan, np.nan, hit, p_star, n, alternative)
+    statistic = (hit - p_star) / math.sqrt(variance)
+    pvalue = _p_value(statistic, alternative, stats.norm())
+    return PesaranTimmermannResult(statistic, pvalue, hit, p_star, n, alternative)

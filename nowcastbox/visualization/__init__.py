@@ -6,9 +6,9 @@ Every plotting function takes ``backend="plotly" | "matplotlib"`` and ``theme=``
 
 Importing this package registers the plots with
 :func:`nowcastbox.core.results.register_plot`, so ``results.plot("forecast")``,
-``"factors"``, ``"eigenvalues"``, ``"loadings"``, ``"fan"``, ``"data_availability"``
-and ``"loglikelihood"`` work on fitted ``TwoStepResults`` / ``MixedFreqDFMResults``
-(see :mod:`~nowcastbox.visualization.registry`).
+``"factors"``, ``"eigenvalues"``, ``"loadings"``, ``"fan"``, ``"data_availability"``,
+``"released_share"``, ``"indicator_heatmap"`` and ``"loglikelihood"`` work on fitted
+``TwoStepResults`` / ``MixedFreqDFMResults`` (see :mod:`~nowcastbox.visualization.registry`).
 
 News waterfalls, nowcast trackers, fan charts, information-criterion curves and
 backtest RMSFE charts take plain pandas objects with documented columns.
@@ -18,7 +18,9 @@ from nowcastbox.visualization.data_flow import (
     AVAILABILITY_STATES,
     data_availability,
     plot_data_availability,
+    plot_released_share,
     release_table,
+    released_share_table,
 )
 from nowcastbox.visualization.diagnostics import plot_loglikelihood
 from nowcastbox.visualization.evaluation import plot_rmsfe_by_horizon, rmsfe_frame
@@ -30,10 +32,12 @@ from nowcastbox.visualization.factors import (
 )
 from nowcastbox.visualization.forecast import (
     interval_levels,
+    plot_empirical_bands,
     plot_fan_chart,
     plot_forecast,
     quantiles_from_nowcast,
 )
+from nowcastbox.visualization.heatmap import heatmap_table, plot_indicator_heatmap
 from nowcastbox.visualization.news import (
     NEWS_HOVER_COLUMNS,
     news_waterfall_table,
@@ -58,24 +62,29 @@ __all__ = [
     "Theme",
     "data_availability",
     "get_theme",
+    "heatmap_table",
     "interval_levels",
     "list_themes",
     "news_waterfall_table",
     "panel_eigenvalues",
     "plot_data_availability",
     "plot_eigenvalues",
+    "plot_empirical_bands",
     "plot_factor_selection",
     "plot_factors",
     "plot_fan_chart",
     "plot_forecast",
+    "plot_indicator_heatmap",
     "plot_loadings",
     "plot_loglikelihood",
     "plot_news_waterfall",
     "plot_nowcast_tracker",
+    "plot_released_share",
     "plot_rmsfe_by_horizon",
     "quantiles_from_nowcast",
     "register_theme",
     "release_table",
+    "released_share_table",
     "rmsfe_frame",
     "set_default_theme",
     "tracker_table",

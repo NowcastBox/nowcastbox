@@ -64,3 +64,36 @@ def test_density_kind(two_step):
     fig = two_step.plot("density", n_boot=0, title="Density")
     assert fig.layout.title.text == "Density"
     assert two_step.plot("density", backend="matplotlib") is not None
+
+
+# ---------------------------------------------------------------------- ECB-parity plots
+def test_density_plot_with_empirical_bands(two_step):
+    import warnings
+
+    from nowcastbox.evaluation.backtest import BacktestResults
+    from tests.density.test_empirical import make_table
+
+    backtest = BacktestResults(make_table("1990-01", "2007-03"), ["DFM"], "gdp")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fig = two_step.plot(
+            "density", method="empirical", backtest=backtest, vintage="2007-04-20", window=None
+        )
+    names = [trace.name for trace in fig.data]
+    assert "Median" in names and "90% band" in names
+    assert "empirical error bands" in fig.layout.title.text
+
+
+def test_plot_empirical_bands_matplotlib():
+    import matplotlib.figure
+
+    from nowcastbox.density import EmpiricalQuantileDistribution
+
+    bands = EmpiricalQuantileDistribution(["2020Q1"], [0.0], [[-1.0, 0.5, 1.0]], levels=(0.5,))
+    fig = viz.plot_empirical_bands(bands, backend="matplotlib", title="t")
+    assert isinstance(fig, matplotlib.figure.Figure)
+
+
+def test_phase1_kinds_registered(two_step):
+    kinds = available_plots(two_step)
+    assert {"released_share", "indicator_heatmap"} <= set(kinds)

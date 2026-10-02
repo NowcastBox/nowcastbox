@@ -18,6 +18,11 @@ Fitted results also expose the wave-2 tools as methods: ``res.news(old, new, per
 ``res.nowcast_tracker(...)``, ``res.level_contributions()``, ``res.distribution()``,
 ``res.diagnostics()`` and ``res.plot(kind)``.
 
+ECB-toolbox parity (0.2.0): ``nb.empirical_bands`` (Reifschneider-Tulip error bands),
+``nb.indicator_zscores`` (z-score heatmap), ``nb.alternative_models`` (nowcasts without
+one or two groups of indicators), ``nb.pesaran_timmermann`` (directional accuracy test),
+``MixedFrequencyData.released_share`` and ``BacktestResults.metrics(..., periods=...)``.
+
 Examples
 --------
 >>> import nowcastbox as nb
@@ -86,10 +91,15 @@ from nowcastbox.datasets import (
     load_us_fred_md,
     load_us_grs_like,
 )
-from nowcastbox.density import NowcastDistribution, nowcast_distribution
-from nowcastbox.diagnostics import DiagnosticsReport, run_diagnostics
-from nowcastbox.evaluation import BacktestResults, PseudoRealTimeBacktest, scoring
-from nowcastbox.experiment import NowcastExperiment
+from nowcastbox.density import NowcastDistribution, empirical_bands, nowcast_distribution
+from nowcastbox.diagnostics import DiagnosticsReport, indicator_zscores, run_diagnostics
+from nowcastbox.evaluation import (
+    BacktestResults,
+    PseudoRealTimeBacktest,
+    pesaran_timmermann,
+    scoring,
+)
+from nowcastbox.experiment import AlternativeNowcasts, NowcastExperiment, alternative_models
 from nowcastbox.models import (
     BridgeEquation,
     BridgeResults,
@@ -155,6 +165,7 @@ from nowcastbox.vintages import (
 
 __all__ = [
     "AggregationType",
+    "AlternativeNowcasts",
     "BacktestResults",
     "BaseBenchmark",
     "BaseNowcaster",
@@ -207,6 +218,7 @@ __all__ = [
     "Vintage",
     "VintageStore",
     "__version__",
+    "alternative_models",
     "apply_transforms",
     "as_mixed_frequency_data",
     "benchmarks",
@@ -217,10 +229,12 @@ __all__ = [
     "datasets",
     "density",
     "diagnostics",
+    "empirical_bands",
     "evaluation",
     "experiment",
     "generate_vintages",
     "hard_threshold",
+    "indicator_zscores",
     "invert_transforms",
     "kalman_filter",
     "kalman_smoother",
@@ -243,6 +257,7 @@ __all__ = [
     "nowcast_distribution",
     "nowcast_tracker",
     "parse_formula",
+    "pesaran_timmermann",
     "pipeline",
     "prepare_panel",
     "preprocessing",

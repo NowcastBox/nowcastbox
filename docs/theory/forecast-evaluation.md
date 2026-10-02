@@ -22,6 +22,53 @@ With errors $e_t = y_t - \hat y_t$ on a common sample of $n$ forecasts:
 $\text{RMSFE} = \sqrt{n^{-1}\sum e_t^2}$, $\text{MAE} = n^{-1}\sum |e_t|$,
 bias $= n^{-1}\sum e_t$, and the relative RMSFE against a benchmark.
 
+## Directional accuracy
+
+The forecast directional accuracy (FDA) of Linzenich & Meunier (2024) counts how often a
+forecast predicts correctly whether the target rises or falls with respect to a previous
+value $y^p_t$:
+
+$$
+\text{FDA} = \frac1n \sum_{t=1}^n I_t, \qquad
+I_t = \mathbb 1\big[(y_t - y^p_t)(\hat y_t - y^p_t) > 0\big].
+$$
+
+For a growth rate this is whether the economy accelerates or decelerates (Blaskowitz &
+Herwartz, 2011, discuss directional errors). In a backtest, $y^p_t$ is the value of the
+period before the target period **known at the vintage date** — the last released value
+when that period is not yet published — so that the reference uses no information the
+forecaster did not have; the final value of the previous period is an option.
+
+The Pesaran & Timmermann (1992) test asks whether the hit rate exceeds what independent
+directions would give. With $x_t = \mathbb 1[\hat y_t - y^p_t > 0]$,
+$z_t = \mathbb 1[y_t - y^p_t > 0]$, $\hat P = n^{-1}\sum \mathbb 1[x_t = z_t]$,
+$\hat P_x = \bar x$, $\hat P_z = \bar z$ and
+$\hat P_\ast = \hat P_z \hat P_x + (1-\hat P_z)(1-\hat P_x)$,
+
+$$
+S_n = \frac{\hat P - \hat P_\ast}{\sqrt{\hat V(\hat P) - \hat V(\hat P_\ast)}}
+\;\xrightarrow{d}\; N(0, 1),
+\qquad \hat V(\hat P) = \frac{\hat P_\ast (1 - \hat P_\ast)}{n},
+$$
+
+$$
+\hat V(\hat P_\ast) = \frac{(2\hat P_z - 1)^2 \hat P_x (1-\hat P_x)}{n}
++ \frac{(2\hat P_x - 1)^2 \hat P_z (1-\hat P_z)}{n}
++ \frac{4 \hat P_z \hat P_x (1-\hat P_z)(1-\hat P_x)}{n^2}.
+$$
+
+The test is one-sided ($H_1$: directional predictability). It is undefined when every
+predicted or every actual change has the same sign.
+
+## Sub-periods
+
+Accuracy and test statistics can be dominated by a few extreme quarters (the Covid-19
+recession and rebound). Evaluating on sub-periods of **target periods** — e.g.
+pre-Covid, Covid (2020Q1-2021Q4, the quarters overlapping March 2020-December 2021),
+post-Covid and the full sample without the pandemic — shows whether a ranking of models
+is driven by them. Each sub-period forms its own common sample before the metrics and
+tests are computed.
+
 ## Diebold-Mariano test
 
 For loss differentials $d_t = L(e_{1t}) - L(e_{2t})$ of two $h$-step forecasts, the null

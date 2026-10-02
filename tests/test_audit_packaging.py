@@ -64,7 +64,7 @@ def test_license_metadata_uses_spdx_expression() -> None:
 
 
 # import name -> distribution; None = optional, imported lazily with an explicit error
-_DISTRIBUTION = {"yaml": "pyyaml", "markupsafe": "jinja2", "sklearn": None}
+_DISTRIBUTION = {"yaml": "pyyaml", "markupsafe": "jinja2", "sklearn": None, "openpyxl": None}
 
 
 def test_every_third_party_import_is_a_declared_dependency() -> None:
@@ -91,3 +91,11 @@ def test_every_third_party_import_is_a_declared_dependency() -> None:
         and _DISTRIBUTION.get(name, name) not in declared
     )
     assert missing == []
+
+
+def test_optional_excel_extra_is_declared() -> None:
+    # openpyxl is imported lazily (Excel templates) and ships as the [excel] extra
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    extra = config["project"]["optional-dependencies"]["excel"]
+    assert any(req.startswith("openpyxl") for req in extra)
+    assert "pipeline/templates/*.xlsx" in config["tool"]["setuptools"]["package-data"]["nowcastbox"]

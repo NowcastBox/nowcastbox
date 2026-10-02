@@ -5,12 +5,12 @@ following the `panelbox.report` pattern), ready to e-mail or publish:
 
 | Section | Content | Needs |
 |---|---|---|
-| headline | latest nowcast, previous value, change, band | results |
-| path | observed vs. in-sample vs. out-of-sample, fan chart | results (+ `quantiles`) |
+| headline | latest nowcast, previous value, change, band, empirical bands | results (+ `bands`) |
+| path | observed vs. in-sample vs. out-of-sample, fan chart, empirical bands, alternative models | results (+ `quantiles`, `bands`, `alternatives`) |
 | news | waterfall and table of releases | `news` |
 | tracker | nowcast through the vintages with contributions | `tracker` |
-| data flow | ragged-edge heatmap and release table | results with data |
-| backtest | RMSFE by horizon | `backtest` |
+| data flow | ragged-edge heatmap, share of the nowcast period's data released, release table, indicator z-score heatmap | results with data (+ `heatmap`) |
+| backtest | RMSFE by horizon, accuracy table (sub-periods, FDA) | `backtest`, `backtest_metrics` |
 | diagnostics | DFM diagnostics (I9) | `diagnostics=True` or a report |
 
 ## Example
@@ -49,6 +49,29 @@ len(html) > 10_000
 
 `to_html(path=None)` returns the HTML (and writes it when a path is given); `render()`
 returns it without writing; `context()` exposes the template variables.
+
+## Conjunctural sections (ECB toolbox parity)
+
+!!! note "New in 0.2.0"
+
+The report can also show the outputs of the ECB Nowcasting Toolbox (Linzenich & Meunier,
+2024): `bands=` takes the [empirical error bands](../density/empirical-bands.md) (tiles at
+57.5/68/90 % and a fan chart), `alternatives=` the [nowcasts of alternative
+models](../evaluation/alternative-models.md) (chart and min/median/max table),
+`heatmap=True` (or an `IndicatorZScores`) adds the [indicator
+heatmap](indicator-heatmap.md) and `backtest_metrics=` an accuracy table such as
+`bt.metrics(metrics=("rmsfe", "fda", "n"), periods="covid")`. The [share of the
+nowcast period's predictor data already released](../data/released-share.md), by
+category, is shown by default (`released_share=False` hides it).
+
+```python
+groups = {"activity": ["ibc_br", "pim_geral", "pmc_varejo", "pms_volume"],
+          "prices_rates": ["ipca", "selic"],
+          "credit_surveys": ["credito_concessoes_sa", "focus_pib"]}
+alt = nb.alternative_models(res, new, "pib", by=groups, drop=1, refit=False)
+conjuncture = nb.NowcastReport(res, alternatives=alt, heatmap=True, plotlyjs="cdn").render()
+"Nowcasts of alternative models" in conjuncture and "Indicator z-scores" in conjuncture
+```
 
 ## Custom templates
 

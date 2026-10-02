@@ -36,7 +36,13 @@ from nowcastbox.visualization.themes import Theme
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-__all__ = ["interval_levels", "plot_fan_chart", "plot_forecast", "quantiles_from_nowcast"]
+__all__ = [
+    "interval_levels",
+    "plot_empirical_bands",
+    "plot_fan_chart",
+    "plot_forecast",
+    "quantiles_from_nowcast",
+]
 
 _INTERVAL = re.compile(r"^(lower|upper)_(\d+(?:\.\d+)?)$")
 _LEVEL_PATTERNS = (
@@ -650,3 +656,53 @@ def _fan_mpl(
             )
         finish_mpl(axes, theme, title=title, ylabel=ylabel, dates=True)
     return fig
+
+
+def plot_empirical_bands(
+    bands: Any,
+    *,
+    observed: pd.Series | None = None,
+    backend: str = "plotly",
+    theme: Theme | str | None = None,
+    title: str | None = None,
+) -> Any:
+    """Fan chart of empirical error bands at their own levels (e.g. 57.5 %, 68 %, 90 %).
+
+    Parameters
+    ----------
+    bands : EmpiricalGaussianDistribution or EmpiricalQuantileDistribution
+        Output of :func:`~nowcastbox.density.empirical_bands` (any object with
+        ``levels`` and ``quantiles(q)``).
+    observed : pandas.Series, optional
+        Realised values drawn as history.
+    backend : {"plotly", "matplotlib"}, default "plotly"
+        Plotting library.
+    theme : Theme or str, optional
+        Visual theme.
+    title : str, optional
+        Title (default ``"Empirical error bands"``).
+
+    Returns
+    -------
+    plotly.graph_objects.Figure or matplotlib.figure.Figure
+        The fan chart.
+
+    Examples
+    --------
+    >>> from nowcastbox.density import EmpiricalQuantileDistribution
+    >>> bands = EmpiricalQuantileDistribution(["2020Q1"], [0.0], [[-1.0, 0.5, 1.0]])
+    >>> fig = plot_empirical_bands(bands)
+    >>> len(fig.data)
+    4
+    """
+    probs = {0.5}
+    for level in bands.levels:
+        probs.update({round((1 - level) / 2, 10), round((1 + level) / 2, 10)})
+    quantiles = bands.quantiles(sorted(probs))
+    return plot_fan_chart(
+        quantiles,
+        observed=observed,
+        backend=backend,
+        theme=theme,
+        title=title or "Empirical error bands",
+    )

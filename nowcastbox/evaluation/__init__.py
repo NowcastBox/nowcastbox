@@ -3,7 +3,8 @@
 Pseudo real-time (and real-time, with a :class:`~nowcastbox.vintages.VintageStore`)
 backtesting, accuracy metrics by nowcast horizon and forecast comparison tests
 (Diebold-Mariano with the Harvey-Leybourne-Newbold correction, Clark-West for nested
-models, Giacomini-White, Model Confidence Set) and density scores
+models, Giacomini-White, Model Confidence Set), directional accuracy (FDA and the
+Pesaran-Timmermann test), accuracy by sub-period (``periods=``) and density scores
 (:mod:`nowcastbox.evaluation.scoring`: CRPS, log score, PIT, Berkowitz/KS uniformity,
 interval coverage and Christoffersen tests, quantile scores; innovation I5).
 
@@ -23,11 +24,15 @@ from nowcastbox.evaluation.backtest import (
     FORECAST_COLUMNS,
     BacktestResults,
     PseudoRealTimeBacktest,
+    covid_periods,
 )
 from nowcastbox.evaluation.metrics import (
+    DIRECTIONAL_METRICS,
     METRICS,
     accuracy_by_horizon,
     bias,
+    directional_accuracy,
+    directional_changes,
     forecast_errors,
     loss_values,
     mae,
@@ -62,15 +67,18 @@ from nowcastbox.evaluation.tests import (
     DieboldMarianoResult,
     GiacominiWhiteResult,
     ModelConfidenceSetResult,
+    PesaranTimmermannResult,
     clark_west,
     clark_west_differential,
     clark_west_from_differential,
     diebold_mariano,
     giacomini_white,
     model_confidence_set,
+    pesaran_timmermann,
 )
 
 __all__ = [
+    "DIRECTIONAL_METRICS",
     "FORECAST_COLUMNS",
     "METRICS",
     "BacktestResults",
@@ -80,6 +88,7 @@ __all__ = [
     "DieboldMarianoResult",
     "GiacominiWhiteResult",
     "ModelConfidenceSetResult",
+    "PesaranTimmermannResult",
     "PseudoRealTimeBacktest",
     "UniformityTestResult",
     "accuracy_by_horizon",
@@ -89,11 +98,14 @@ __all__ = [
     "clark_west",
     "clark_west_differential",
     "clark_west_from_differential",
+    "covid_periods",
     "crps",
     "crps_gaussian",
     "crps_mixture",
     "crps_sample",
     "diebold_mariano",
+    "directional_accuracy",
+    "directional_changes",
     "forecast_errors",
     "giacomini_white",
     "interval_coverage",
@@ -108,6 +120,7 @@ __all__ = [
     "metric_by_horizon",
     "model_confidence_set",
     "mse",
+    "pesaran_timmermann",
     "pit",
     "quantile_score",
     "relative_rmsfe",
