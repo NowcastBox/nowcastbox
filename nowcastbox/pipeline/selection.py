@@ -1,4 +1,4 @@
-"""Model-building stages of a nowcast spec (``selection``; ECB toolbox parity, 0.3.0).
+"""Model-building stages of a nowcast spec (``selection``; ECB toolbox parity, 0.2.0).
 
 The optional ``selection`` section of a :class:`~nowcastbox.pipeline.NowcastSpec`
 chains the model-building workflow of the ECB Nowcasting Toolbox (Linzenich & Meunier,

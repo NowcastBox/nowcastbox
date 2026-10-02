@@ -17,7 +17,7 @@ data -> transformations -> vintages -> factor selection -> estimation -> nowcast
 ```
 
 !!! warning "Pre-alpha"
-    NowcastBox is under active development (0.1.0, first public release). The API
+    NowcastBox is under active development (0.2.0). The API
     documented here is tested on every commit, but names may still change before 1.0.
     New in this release cycle: the declarative pipeline and command-line interface
     ([Pipeline and CLI](user-guide/pipeline-cli.md)) and calendar-aware weekly/daily
@@ -58,7 +58,7 @@ data -> transformations -> vintages -> factor selection -> estimation -> nowcast
 ## Innovations
 
 What NowcastBox adds to the R package `nowcasting` and to `statsmodels`'
-`DynamicFactorMQ` (plan §3.2). Status for the 0.1.0 release.
+`DynamicFactorMQ` (plan §3.2). Status for the 0.2.0 release; 0.2.0 also adds the features of the ECB Nowcasting Toolbox (see the [changelog](changelog.md)).
 
 | # | Innovation | What it delivers | Status | Where |
 |---|---|---|---|---|

@@ -1,6 +1,6 @@
 # Pre-selection of indicators (t-stat, SIS, LARS)
 
-!!! note "New in 0.3.0"
+!!! note "New in 0.2.0"
     `preselect`, `sis`, `lars_select` and `lars_path` are available from
     `nowcastbox.selection` (ECB-toolbox parity, item 8).
 

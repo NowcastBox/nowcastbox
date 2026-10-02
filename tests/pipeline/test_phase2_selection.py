@@ -1,4 +1,4 @@
-"""Pipeline wiring of the ECB-parity model building (0.3.0): ``selection.preselect``,
+"""Pipeline wiring of the ECB-parity model building (0.2.0): ``selection.preselect``,
 ``selection.search`` (with the Covid robustness step) and ``model: bridge_combination``."""
 
 from __future__ import annotations

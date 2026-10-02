@@ -23,12 +23,12 @@ ECB-toolbox parity (0.2.0): ``nb.empirical_bands`` (Reifschneider-Tulip error ba
 one or two groups of indicators), ``nb.pesaran_timmermann`` (directional accuracy test),
 ``MixedFrequencyData.released_share`` and ``BacktestResults.metrics(..., periods=...)``.
 
-ECB-toolbox parity (0.3.0, model building): ``nb.preselect`` (t-stat, SIS and LARS
+ECB-toolbox parity (0.2.0, model building): ``nb.preselect`` (t-stat, SIS and LARS
 rankings of the indicators), ``nb.SpecificationSearch`` (random or grid search of
 specifications scored in pseudo real time, with a Covid robustness step) and
 ``nb.BridgeCombination`` (combination of all small bridge equations).
 
-ECB-toolbox parity (0.4.0): ``nb.LargeBVAR`` (large mixed-frequency Bayesian VAR with
+ECB-toolbox parity (0.2.0, large BVAR): ``nb.LargeBVAR`` (large mixed-frequency Bayesian VAR with
 blocking, GLP hierarchical prior, conditional forecasts, posterior densities and news)
 and ``nb.BVARExtrapolator`` (``BridgeCombination(extrapolation="bvar")``).
 

@@ -22,20 +22,20 @@ data -> transformations -> vintages -> factor selection -> estimation -> nowcast
      -> news decomposition -> density -> real-time evaluation -> diagnostics -> report
 ```
 
-> **Status: 0.1.0, first public release.** The API is tested on every commit
-> (about 3,300 tests, 99 % branch coverage) but names may still change before 1.0.
+> **Status: 0.2.0.** The API is tested on every commit
+> (about 4,200 tests, 99 % branch coverage) but names may still change before 1.0.
 
 ## Features
 
 | Area | What you get |
 |---|---|
-| **Models** | Two-step DFM (Giannone, Reichlin & Small, 2008; Doz, Giannone & Reichlin, 2011), aggregating factors or variables; mixed-frequency EM DFM with blocks and AR(1)/iid idiosyncratic components (Bańbura & Modugno, 2014); bridge equations |
+| **Models** | Two-step DFM (Giannone, Reichlin & Small, 2008; Doz, Giannone & Reichlin, 2011), aggregating factors or variables; mixed-frequency EM DFM with blocks and AR(1)/iid idiosyncratic components (Bańbura & Modugno, 2014); large mixed-frequency Bayesian VAR (Cimadomo et al., 2022; GLP 2015 prior); bridge equations and their combination (Bańbura et al., 2023) |
 | **Data** | `MixedFrequencyData` (daily, weekly, monthly, quarterly and annual series on one grid), named and invertible transformations (codes 0–7 of the R package plus `"dlog"`, `"yoy"`...), outliers, gap filling, flow/stock/average/Mariano-Murasawa aggregation, `prepare_panel` |
-| **Selection** | Bai & Ng (2002) factors, Bai & Ng (2007) shocks, targeted predictors (Bai & Ng, 2008), block and variable selection in pseudo real time |
+| **Selection** | Bai & Ng (2002) factors, Bai & Ng (2007) shocks, targeted predictors (Bai & Ng, 2008), pre-selection by t-statistic, SIS and LARS with an aggregated score, block and variable selection and random specification search with Covid-robustness checks in pseudo real time |
 | **Real time** | Release calendars, pseudo real-time vintages, real vintages with revisions (`VintageStore`, Brazilian GDP vintages, ALFRED) |
-| **Explainability** | News decomposition by series, block and category, revisions vs. releases, nowcast tracker, contributions to the level |
-| **Evaluation** | Pseudo/real-time backtests by horizon, AR, random walk, mean, bridge, U-MIDAS, MIDAS and any scikit-learn regressor as benchmarks, Diebold-Mariano (HLN), Giacomini-White, Model Confidence Set, CRPS, log score, PIT and coverage tests |
-| **Production** | YAML pipeline, `nowcastbox` command line, versioned snapshots, HTML reports, `NowcastExperiment` |
+| **Explainability** | News decomposition by series, block and category, revisions vs. releases, nowcast tracker, contributions to the level, z-score heatmap of the indicators, share of data released, nowcasts of alternative models without groups of indicators |
+| **Evaluation** | Pseudo/real-time backtests by horizon, AR, random walk, mean, bridge, U-MIDAS, MIDAS and any scikit-learn regressor as benchmarks, Diebold-Mariano (HLN), Clark-West, Giacomini-White, Model Confidence Set, directional accuracy (Pesaran-Timmermann), metrics by sub-period, CRPS, log score, PIT and coverage tests, empirical (past-error) uncertainty bands |
+| **Production** | YAML pipeline, `nowcastbox` command line, versioned snapshots, HTML reports, Excel templates, `NowcastExperiment` |
 | **Data access** | BCB/SGS, IBGE/SIDRA, IPEADATA and FRED/ALFRED connectors with an on-disk cache; seven built-in datasets |
 
 ## Innovations
@@ -178,7 +178,7 @@ to the latest version; each release also has its own DOI on Zenodo.
   author  = {Haase, Gustavo and Sanches, Alexandre Le{\~a}o},
   title   = {{NowcastBox}: Nowcasting with Dynamic Factor Models in Python},
   year    = {2026},
-  version = {0.1.2},
+  version = {0.2.0},
   license = {MIT},
   doi     = {10.5281/zenodo.23102804},
   url     = {https://github.com/NowcastBox/nowcastbox}

@@ -1,6 +1,6 @@
 # Building a model from scratch
 
-!!! note "New in 0.3.0"
+!!! note "New in 0.2.0"
     This guide chains the model-building tools added for parity with the ECB Nowcasting
     Toolbox (Linzenich & Meunier, 2024, §2): `nb.preselect`, `nb.SpecificationSearch`
     (with its Covid robustness step) and `nb.BridgeCombination`.

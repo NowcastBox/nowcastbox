@@ -1,6 +1,6 @@
 # Specification search and Covid robustness
 
-!!! note "New in 0.3.0"
+!!! note "New in 0.2.0"
     `SpecificationSearch`, `SearchResults`, `CovidRobustness` and `SpecifiedModel` are
     available from `nowcastbox.selection` (ECB-toolbox parity, item 9).
 

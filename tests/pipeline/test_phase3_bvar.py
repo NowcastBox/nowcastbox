@@ -1,4 +1,4 @@
-"""Pipeline wiring of the ECB-parity large BVAR (0.4.0): ``model: large_bvar`` and the
+"""Pipeline wiring of the ECB-parity large BVAR (0.2.0): ``model: large_bvar`` and the
 ``"bvar"`` extrapolation of ``model: bridge_combination``."""
 
 from __future__ import annotations

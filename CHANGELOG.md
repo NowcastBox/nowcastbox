@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phases 1, 2 and 3 of the parity plan with the ECB Nowcasting Toolbox (Linzenich & Meunier,
-2024, ECB WP 3004): evaluation and conjunctural outputs (0.2.0 features), model
-building (0.3.0 features: pre-selection, specification search with Covid robustness,
-combination of bridge equations) and the large Bayesian VAR (0.4.0 features).
+## [0.2.0] - 2026-10-02
+
+Parity with the ECB Nowcasting Toolbox (Linzenich & Meunier, 2024, ECB WP 3004), released
+in one version: evaluation and conjunctural outputs, model building (pre-selection,
+specification search with Covid robustness, combination of bridge equations) and the
+large Bayesian VAR.
 
 ### Added
 
