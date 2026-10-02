@@ -234,7 +234,9 @@ def _one_step(X: np.ndarray, y: np.ndarray, state: _State, method: str, cap: int
     gamma, joining = _entry_step(c, a, big_c, a_a, inactive)
     d = signs * w
     leaving = None
-    if method == "lasso":
+    # with rank(X) < p the path is not unique once rank(X) predictors are active: finish
+    # with the step to the least-squares fit instead of dropping predictors
+    if method == "lasso" and (len(state.active) < cap or cap >= p):
         gam_drop, leaving = _drop_step(state.beta, d, state.active)
         if leaving is not None and gam_drop < gamma:
             gamma, joining = gam_drop, None
@@ -276,10 +278,13 @@ def lars_path(
         ``(n,)`` response.
     method : {"lar", "lasso"}, default "lar"
         Plain LARS (Section 2) or the lasso modification (Section 3.1), which drops a
-        predictor whose coefficient crosses zero.
+        predictor whose coefficient crosses zero. When ``rank(X) < p`` (e.g. centred
+        data with ``p >= n``) and ``rank(X)`` predictors are active, the lasso path is no
+        longer unique; the path then ends with one step to the least-squares fit, so that
+        every reported knot satisfies the lasso optimality conditions.
     max_steps : int, optional
-        Maximum number of steps (default: no limit; at most ``min(n, p)`` predictors
-        are ever active simultaneously).
+        Maximum number of steps (default: no limit; at most ``rank(X)`` predictors
+        are ever active simultaneously, i.e. ``n - 1`` for centred data with ``p >= n``).
     tol : float, default 1e-12
         The path stops when the largest absolute correlation falls below ``tol``
         times its initial value.
@@ -326,8 +331,11 @@ def lars_path(
         state.active.append(first)
         state.entry_order.append(first)
     limit = max_steps if max_steps is not None else 8 * max(n, p)
+    # at most rank(X) predictors can be active (n - 1 for centred data): beyond that the
+    # path is not unique and its continuation is numerically arbitrary
+    cap = int(np.linalg.matrix_rank(X)) if c_max > 0 else 0
     while state.active and len(state.alphas) - 1 < limit and state.alphas[-1] * n > tol * c_max:
-        if not _one_step(X, y, state, method, min(n, p)):
+        if not _one_step(X, y, state, method, cap):
             break
     logger.debug("LARS (%s): %d steps, %d active", method, len(state.alphas) - 1, len(state.active))
     return LarsPath(

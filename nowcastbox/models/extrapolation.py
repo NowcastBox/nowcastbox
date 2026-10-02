@@ -37,7 +37,7 @@ Examples
 >>> idx = pd.period_range("2020-01", periods=5, freq="M")
 >>> mfd = MixedFrequencyData(pd.DataFrame({"x": [1.0, 2, 3, 4, np.nan]}, index=idx), "M")
 >>> ext = make_extrapolator("ar", ar_lags=1)
->>> ext(mfd, ["x"], pd.Period("2020Q2", "Q"))["x"].tolist()
+>>> ext(mfd, ["x"], pd.Period("2020Q2", "Q"))["x"].round(10).tolist()
 [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
 """
 

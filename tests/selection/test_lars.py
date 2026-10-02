@@ -120,6 +120,26 @@ class TestProperties:
             corr = np.abs(X.T @ (y[:, None] - X @ path.coefs)).max(axis=0) / n
             np.testing.assert_allclose(corr, path.alphas, atol=1e-8, err_msg=f"seed {seed}")
 
+    @pytest.mark.parametrize("perturbation", [2, 13, 17])
+    def test_lasso_kkt_after_rank_saturation(self, perturbation):
+        """Regression: centred n = p design (rank n - 1) perturbed at 1e-15.
+
+        The active set reaches rank(X) before the end of the path; the lasso used to keep
+        dropping and re-adding predictors there and violated the optimality conditions on
+        some BLAS builds. The path now ends with a step to the least-squares fit.
+        """
+        rng = np.random.default_rng(7)
+        n, p = int(rng.integers(5, 40)), int(rng.integers(2, 60))
+        X, _ = _standardized(rng.normal(size=(n, p)), np.zeros(n))
+        y = X[:, :3].sum(axis=1) + rng.normal(size=n)
+        y = y - y.mean()
+        X = X + np.random.default_rng(1000 + perturbation).normal(scale=1e-15, size=X.shape)
+        path = lars_path(X, y, method="lasso")
+        corr = np.abs(X.T @ (y[:, None] - X @ path.coefs)).max(axis=0) / n
+        np.testing.assert_allclose(corr, path.alphas, atol=1e-8)
+        assert (path.coefs != 0).sum(axis=0).max() <= np.linalg.matrix_rank(X)
+        assert path.alphas[-1] == pytest.approx(0.0, abs=1e-12)
+
     def test_ends_at_least_squares(self):
         X, y = _sparse(0)
         path = lars_path(X, y)

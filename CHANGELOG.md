@@ -199,6 +199,12 @@ large Bayesian VAR.
 
 ### Changed
 
+- `lars_path(method="lasso")`: with a rank-deficient design (`rank(X) < p`, e.g. centred
+  data with `p >= n`), the path ends with a step to the least-squares fit once `rank(X)`
+  predictors are active, instead of continuing through the non-unique part of the path,
+  where the optimality conditions could fail on some BLAS builds. At most `rank(X)`
+  predictors are active.
+
 - `BacktestResults.directional_accuracy()` keeps rows with a missing horizon value (for
   example an unknown `days_to_release`) as their own group, as `metrics()` does.
 - `nowcast_tracker`'s `released_share` column counts only the fitted model's predictors
