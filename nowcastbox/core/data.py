@@ -1722,7 +1722,7 @@ class MixedFrequencyData:
         >>> mfd.as_of("2020-03-10")["a"].tolist()
         [1.0, 2.0, nan]
         """
-        overrides = dict(release_delays or {})
+        overrides = dict(release_delays) if release_delays is not None else {}
         unknown = sorted(set(overrides) - set(self._meta))
         if unknown:
             raise NowcastDataError(f"release_delays given for unknown series {unknown}.")

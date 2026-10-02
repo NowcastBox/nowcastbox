@@ -670,6 +670,14 @@ def test_as_of_emptying_series_does_not_warn(panel):
     assert early.n_observations()["gdp"] == 0
 
 
+
+def test_as_of_accepts_release_delays_as_series(panel):
+    delays = {name: 20 for name in panel.columns}
+    expected = panel.as_of("2018-06-15", delays).to_frame()
+    got = panel.as_of("2018-06-15", pd.Series(delays)).to_frame()
+    pd.testing.assert_frame_equal(got, expected)
+
+
 class TestTransformApplied:
     def test_default_false_and_coercion(self):
         assert SeriesMetadata("a", "M").transform_applied is False
