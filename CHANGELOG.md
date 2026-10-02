@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-02
+
+First public release on PyPI. It contains the release candidate below plus the
+following changes.
+
 ### Added
 
 - `clark_west`, `clark_west_differential`, `clark_west_from_differential` and
@@ -46,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docs: the statsmodels comparison and the pipeline "equivalent code" examples now run
   (and are executed by the docs tests).
 
-## [0.1.0] - release candidate (draft release notes, not published)
+## [0.1.0rc] - release candidate notes (included in 0.1.0)
 
 First public release: the complete DFM nowcasting workflow of the plan
 (`desenvolvimento/PROJETO_DESENVOLVIMENTO.md`) — data, vintages, selection, estimation, news, density,

@@ -21,9 +21,8 @@ data -> transformations -> vintages -> factor selection -> estimation -> nowcast
      -> news decomposition -> density -> real-time evaluation -> diagnostics -> report
 ```
 
-> **Status: 0.1.0 release candidate (`0.1.0.dev0`).** The API is tested on every commit
+> **Status: 0.1.0, first public release.** The API is tested on every commit
 > (about 3,300 tests, 99 % branch coverage) but names may still change before 1.0.
-> Not yet on PyPI: install from a clone.
 
 ## Features
 
@@ -59,9 +58,14 @@ What NowcastBox adds to the R package `nowcasting` and to `statsmodels`' `Dynami
 ## Installation
 
 ```bash
+pip install nowcastbox
+```
+
+Development version:
+
+```bash
 git clone https://github.com/NowcastBox/nowcastbox.git
 cd nowcastbox
-pip install -e .                 # library
 pip install -e ".[dev]"          # + tests, linters, notebooks tooling
 ```
 

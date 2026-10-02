@@ -5,7 +5,7 @@ NowcastBox requires **Python 3.10 or later**.
 ## From PyPI
 
 ```bash
-pip install nowcastbox            # once released on PyPI
+pip install nowcastbox
 ```
 
 ## From a clone (development version)

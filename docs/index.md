@@ -17,7 +17,7 @@ data -> transformations -> vintages -> factor selection -> estimation -> nowcast
 ```
 
 !!! warning "Pre-alpha"
-    NowcastBox is under active development (`0.1.0.dev0`, preparing 0.1.0). The API
+    NowcastBox is under active development (0.1.0, first public release). The API
     documented here is tested on every commit, but names may still change before 1.0.
     New in this release cycle: the declarative pipeline and command-line interface
     ([Pipeline and CLI](user-guide/pipeline-cli.md)) and calendar-aware weekly/daily
