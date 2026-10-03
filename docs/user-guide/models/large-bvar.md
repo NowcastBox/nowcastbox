@@ -67,6 +67,7 @@ LargeBVAR(lags=5, prior_mean="blocked_random_walk",
           sum_of_coefficients=True, initial_observation=True)
 
 # stationary series (surveys, rates) can stay at white noise:
+level_series = ["ip", "retail", "gdp"]           # series in (log-)levels
 LargeBVAR(lags=5,
           prior_mean={**dict.fromkeys(level_series, "blocked_random_walk"),
                       "pmi": "white_noise"},
@@ -82,6 +83,13 @@ points. The derivation (prior variances, grouped dummy priors) is on the
 [BVAR prior page](../../theory/bvar-prior.md#blocked-random-walk-mixed-frequency-var-with-blocking).
 For the monthly VAR of the `"bvar"` indicator extrapolator the option equals
 `"random_walk"`.
+
+With a mapping, every series (including those left at `"white_noise"`) forms its own
+unit-root group in the sum-of-coefficients and initial-observation priors, as in the
+standard (ungrouped) dummy priors. On real data keep both dummy priors on: on the
+Brazilian log-level panel without them the marginal likelihood can be bimodal in
+$\lambda$ (short samples with hundreds of regressors) and the selected $\lambda$ can
+collapse towards zero, turning the nowcasts into random-walk extrapolations.
 
 The nowcast is then in the units of the target (for example a log level). Compute
 growth rates from the forecast levels yourself.

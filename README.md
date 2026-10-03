@@ -22,7 +22,7 @@ data -> transformations -> vintages -> factor selection -> estimation -> nowcast
      -> news decomposition -> density -> real-time evaluation -> diagnostics -> report
 ```
 
-> **Status: 0.2.0.** The API is tested on every commit
+> **Status: 0.2.1.** The API is tested on every commit
 > (about 4,200 tests, 99 % branch coverage) but names may still change before 1.0.
 
 ## Features
@@ -178,7 +178,7 @@ to the latest version; each release also has its own DOI on Zenodo.
   author  = {Haase, Gustavo and Sanches, Alexandre Le{\~a}o},
   title   = {{NowcastBox}: Nowcasting with Dynamic Factor Models in Python},
   year    = {2026},
-  version = {0.2.0},
+  version = {0.2.1},
   license = {MIT},
   doi     = {10.5281/zenodo.23102804},
   url     = {https://github.com/NowcastBox/nowcastbox}
