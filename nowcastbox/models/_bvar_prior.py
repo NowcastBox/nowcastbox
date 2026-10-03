@@ -42,6 +42,18 @@ GLP 2015, §3). Small :math:`\mu` pushes :math:`\sum_l B_l` to the identity (uni
 no cointegration); small :math:`\delta` pushes the VAR towards a common stochastic trend
 started at :math:`\bar y_0`.
 
+**Blocked random walk.** :class:`PriorSettings` also takes a full prior mean
+:math:`\operatorname{E}[A_1]` (not only own-lag means) and *unit-root groups*: variables
+of one group share a single unit root in the two dummy priors (one sum-of-coefficients
+row per group, common starting level). In the blocked VAR of
+:mod:`nowcastbox.models.bvar` the three monthly blocks :math:`x^{(1)}, x^{(2)}, x^{(3)}`
+of a monthly random walk satisfy :math:`x^{(m)}_t = x^{(3)}_{t-1} + \text{noise}`
+(each month is centred on the last month of the previous quarter), i.e.
+:math:`\operatorname{E}[A_1]` has ones in the column of :math:`x^{(3)}_{t-1}` and
+:math:`\sum_l A_l \iota_g = \iota_g` for the group :math:`g` of the three blocks. The
+Minnesota variances keep the quarterly lag decay (the conjugate prior needs
+:math:`\Omega` common to all equations).
+
 Posterior and marginal likelihood
 ---------------------------------
 With :math:`\bar\Omega = (X'X + \Omega^{-1})^{-1}` and
@@ -393,10 +405,15 @@ class PriorSettings:
 
     Parameters
     ----------
-    prior_mean : {"random_walk", "white_noise"} or float or sequence of float
-        Prior mean :math:`\delta_i` of the own first-lag coefficient of each variable:
-        1 (``"random_walk"``, for levels), 0 (``"white_noise"``, for growth rates), a
-        common value or one value per variable.
+    prior_mean : {"random_walk", "white_noise"}, float, sequence of float or matrix
+        Prior mean of the first-lag coefficient matrix :math:`A_1` (all other lags have
+        mean zero). A name, a number or one number per variable set the own first-lag
+        means :math:`\delta_i`: 1 (``"random_walk"``, for levels), 0 (``"white_noise"``,
+        for growth rates), a common value or one value per variable. An ``(n, n)``
+        matrix gives the full :math:`\operatorname{E}[A_1]`: entry ``(i, j)`` is the
+        prior mean of the coefficient of :math:`y_{j,t-1}` in equation :math:`i` (used
+        by the blocked random walk of :class:`~nowcastbox.models.LargeBVAR`, where every
+        month of a monthly series is centred on its last month of the previous quarter).
     lag_decay : float, default 2.0
         Exponent :math:`\kappa` of the lag decay :math:`1/l^\kappa` of the prior
         variances (GLP use 2).
@@ -405,12 +422,17 @@ class PriorSettings:
     dof : float, optional
         Prior degrees of freedom :math:`d` of :math:`\Sigma`; default :math:`n + 2`
         (the smallest integer with a finite prior mean of :math:`\Sigma`).
+    unit_root_groups : sequence of hashable, optional
+        One label per variable; variables with the same label share **one** unit root
+        in the sum-of-coefficients and dummy-initial-observation priors (the three
+        monthly blocks of a series in the blocked VAR). ``None``: every variable is its
+        own group (the usual priors). See :func:`sum_of_coefficients_dummies`.
 
     Raises
     ------
     ValueError
-        If ``prior_mean`` is an unknown string or ``lag_decay``/``intercept_variance``
-        are not positive.
+        If ``prior_mean`` is an unknown string or a non-square/non-finite matrix, or
+        ``lag_decay``/``intercept_variance`` are not positive.
 
     Examples
     --------
@@ -420,28 +442,39 @@ class PriorSettings:
     [1.0, 0.0]
     >>> PriorSettings().degrees_of_freedom(3)
     5.0
+    >>> blocked = PriorSettings(prior_mean=[[0, 1], [0, 1]], unit_root_groups=["x", "x"])
+    >>> blocked.first_lag_mean(2).tolist(), blocked.group_index(2).tolist()
+    ([[0.0, 1.0], [0.0, 1.0]], [0, 0])
     """
 
-    prior_mean: str | float | Sequence[float] = "random_walk"
+    prior_mean: str | float | Sequence[float] | Sequence[Sequence[float]] | np.ndarray = (
+        "random_walk"
+    )
     lag_decay: float = 2.0
     intercept_variance: float = 1e6
     dof: float | None = None
+    unit_root_groups: Sequence[object] | None = None
 
     def __post_init__(self) -> None:
-        """Validate the settings."""
-        if isinstance(self.prior_mean, str) and self.prior_mean not in (
-            "random_walk",
-            "white_noise",
-        ):
-            raise ValueError(
-                f"prior_mean must be 'random_walk', 'white_noise' or numeric, "
-                f"got {self.prior_mean!r}"
-            )
+        """Validate the settings (matrices and groups are stored as tuples)."""
+        if isinstance(self.prior_mean, str):
+            if self.prior_mean not in ("random_walk", "white_noise"):
+                raise ValueError(
+                    f"prior_mean must be 'random_walk', 'white_noise' or numeric, "
+                    f"got {self.prior_mean!r}"
+                )
+        elif np.ndim(self.prior_mean) == 2:
+            mat = np.asarray(self.prior_mean, dtype=float)
+            if mat.shape[0] != mat.shape[1] or not np.all(np.isfinite(mat)):
+                raise ValueError(f"a prior_mean matrix must be square and finite, got {mat.shape}")
+            object.__setattr__(self, "prior_mean", tuple(map(tuple, mat.tolist())))
+        if self.unit_root_groups is not None:
+            object.__setattr__(self, "unit_root_groups", tuple(self.unit_root_groups))
         if self.lag_decay <= 0 or self.intercept_variance <= 0:
             raise ValueError("lag_decay and intercept_variance must be positive")
 
     def own_lag_mean(self, n: int) -> np.ndarray:
-        """Prior means of the own first-lag coefficients.
+        """Prior means of the own first-lag coefficients (diagonal of E[A_1]).
 
         Parameters
         ----------
@@ -456,7 +489,7 @@ class PriorSettings:
         Raises
         ------
         ValueError
-            If a sequence of the wrong length was given.
+            If a sequence or matrix of the wrong size was given.
 
         Examples
         --------
@@ -469,9 +502,75 @@ class PriorSettings:
         arr = np.asarray(self.prior_mean, dtype=float)
         if arr.ndim == 0:
             return np.full(n, float(arr))
+        if arr.ndim == 2:
+            return np.diag(self.first_lag_mean(n)).copy()
         if arr.shape != (n,):
             raise ValueError(f"prior_mean has {arr.size} values for {n} variables")
         return arr.copy()
+
+    def first_lag_mean(self, n: int) -> np.ndarray:
+        r"""Prior mean :math:`\operatorname{E}[A_1]` of the first-lag coefficients.
+
+        Parameters
+        ----------
+        n : int
+            Number of variables.
+
+        Returns
+        -------
+        numpy.ndarray
+            Shape ``(n, n)``; entry ``(i, j)`` is the mean of the coefficient of
+            :math:`y_{j,t-1}` in equation :math:`i` (diagonal unless a matrix was given).
+
+        Raises
+        ------
+        ValueError
+            If ``prior_mean`` does not match ``n`` variables.
+
+        Examples
+        --------
+        >>> PriorSettings(prior_mean=[1, 0]).first_lag_mean(2).tolist()
+        [[1.0, 0.0], [0.0, 0.0]]
+        """
+        if isinstance(self.prior_mean, str) or np.ndim(self.prior_mean) < 2:
+            return np.diag(self.own_lag_mean(n))
+        mat = np.asarray(self.prior_mean, dtype=float)
+        if mat.shape != (n, n):
+            raise ValueError(f"prior_mean matrix has shape {mat.shape} for {n} variables")
+        return mat
+
+    def group_index(self, n: int) -> np.ndarray:
+        """Unit-root group (``0..G-1``, in order of appearance) of every variable.
+
+        Parameters
+        ----------
+        n : int
+            Number of variables.
+
+        Returns
+        -------
+        numpy.ndarray
+            Integer array of shape ``(n,)``; ``arange(n)`` without ``unit_root_groups``.
+
+        Raises
+        ------
+        ValueError
+            If ``unit_root_groups`` does not have ``n`` labels.
+
+        Examples
+        --------
+        >>> PriorSettings(unit_root_groups=["b", "b", "a"]).group_index(3).tolist()
+        [0, 0, 1]
+        >>> PriorSettings().group_index(2).tolist()
+        [0, 1]
+        """
+        labels = self.unit_root_groups
+        if labels is None:
+            return np.arange(n)
+        if len(labels) != n:
+            raise ValueError(f"unit_root_groups has {len(labels)} labels for {n} variables")
+        order: dict[object, int] = {}
+        return np.array([order.setdefault(label, len(order)) for label in labels], dtype=int)
 
     def degrees_of_freedom(self, n: int) -> float:
         r"""Prior degrees of freedom :math:`d`.
@@ -611,7 +710,8 @@ def minnesota_prior(
     Returns
     -------
     NIWPrior
-        :math:`b` (own first lag = :math:`\delta_i`), diagonal :math:`\Omega`
+        :math:`b` (first lag = :math:`\operatorname{E}[A_1]'`, by default
+        :math:`\delta_i` on the own lag), diagonal :math:`\Omega`
         (:math:`\lambda^2 (d-n-1)/(l^\kappa \psi_j)`; constant:
         ``intercept_variance``), :math:`\Psi = \operatorname{diag}(\psi)`, :math:`d`.
 
@@ -642,7 +742,7 @@ def minnesota_prior(
     omega = omega if system.constant else omega[1:]
     mean = np.zeros((system.k, n))
     first = [system.lag_column(1, j) for j in range(n)]
-    mean[first, np.arange(n)] = settings.own_lag_mean(n)
+    mean[first, :] = settings.first_lag_mean(n).T  # row j of B = regressor y_{j,t-1}
     return NIWPrior(mean=mean, omega=omega, scale=np.diag(hyper.psi), dof=d)
 
 
@@ -693,8 +793,36 @@ def minnesota_dummies(
     return Yd, Xd
 
 
-def sum_of_coefficients_dummies(system: VARSystem, mu: float) -> tuple[np.ndarray, np.ndarray]:
+def _group_levels(
+    system: VARSystem, groups: Sequence[int] | np.ndarray | None
+) -> tuple[np.ndarray, np.ndarray]:
+    r"""Group indicator (``(G, n)``) and per-variable common level :math:`\bar y_{0,g(i)}`."""
+    n = system.n
+    index = np.arange(n) if groups is None else np.asarray(groups, dtype=int)
+    if index.shape != (n,):
+        raise ValueError(f"groups has {index.size} labels for {n} variables")
+    _, index = np.unique(index, return_inverse=True)
+    indicator = (index[None, :] == np.arange(int(index.max()) + 1)[:, None]).astype(float)
+    level = (indicator @ system.y0_mean) / indicator.sum(axis=1)
+    return indicator, level[index]
+
+
+def sum_of_coefficients_dummies(
+    system: VARSystem, mu: float, groups: Sequence[int] | np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     r"""Sum-of-coefficients dummy observations (Doan, Litterman & Sims, 1984).
+
+    One row per unit-root group :math:`g` (by default per variable): with
+    :math:`\bar y_{0,g}` the mean of :math:`\bar y_0` over the members of :math:`g`,
+    :math:`Y^+_{g,i} = \bar y_{0,g}/\mu` for :math:`i \in g` (zero otherwise) and
+    :math:`X^+_g = (0, Y^+_g, \dots, Y^+_g)`. In equation :math:`i` the row says
+    :math:`\bar y_{0,g}\,1\{i \in g\} = \bar y_{0,g} \sum_l \sum_{j \in g}
+    (A_l)_{ij} + \text{noise}`: if every member of the group sits at a common level in
+    all lags, the members stay there and the other variables do not react. With
+    singleton groups this is the usual prior :math:`\sum_l A_l = I`; with the three
+    monthly blocks of a series as one group it is the blocked unit root
+    :math:`\sum_l A_l \iota_g = \iota_g` (one unit root per series), which the blocked
+    random walk satisfies exactly.
 
     Parameters
     ----------
@@ -702,13 +830,21 @@ def sum_of_coefficients_dummies(system: VARSystem, mu: float) -> tuple[np.ndarra
         VAR data (uses ``y0_mean``).
     mu : float
         Tightness :math:`\mu > 0` (smaller = tighter).
+    groups : array-like of int, optional
+        Unit-root group of every variable (see :meth:`PriorSettings.group_index`);
+        default: one group per variable.
 
     Returns
     -------
     Yd : numpy.ndarray
-        :math:`\operatorname{diag}(\bar y_0)/\mu`, shape ``(n, n)``.
+        Shape ``(G, n)`` (:math:`\operatorname{diag}(\bar y_0)/\mu` by default).
     Xd : numpy.ndarray
-        :math:`(0, Y_d, \dots, Y_d)`, shape ``(n, k)``.
+        :math:`(0, Y_d, \dots, Y_d)`, shape ``(G, k)``.
+
+    Raises
+    ------
+    ValueError
+        If ``groups`` does not have one label per variable.
 
     Examples
     --------
@@ -717,18 +853,26 @@ def sum_of_coefficients_dummies(system: VARSystem, mu: float) -> tuple[np.ndarra
     >>> Yd, Xd = sum_of_coefficients_dummies(s, 0.5)
     >>> Yd.tolist(), Xd.tolist()
     ([[2.0, 0.0], [0.0, 4.0]], [[0.0, 2.0, 0.0], [0.0, 0.0, 4.0]])
+    >>> sum_of_coefficients_dummies(s, 0.5, groups=[0, 0])[0].tolist()
+    [[3.0, 3.0]]
     """
-    Yd = np.diag(system.y0_mean) / mu
+    indicator, level = _group_levels(system, groups)
+    Yd = indicator * level[None, :] / mu
     blocks = [Yd] * system.lags
     if system.constant:
-        blocks.insert(0, np.zeros((system.n, 1)))
+        blocks.insert(0, np.zeros((Yd.shape[0], 1)))
     return Yd, np.hstack(blocks)
 
 
 def dummy_initial_observation_dummies(
-    system: VARSystem, delta: float
+    system: VARSystem, delta: float, groups: Sequence[int] | np.ndarray | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
     r"""Dummy-initial-observation row (Sims, 1993; Sims & Zha, 1998).
+
+    The row places every variable at its starting level :math:`\bar y_0` (with
+    ``groups``: the common level of its group, so that a group sharing one unit root
+    starts from one level and the row is satisfied exactly by the blocked random
+    walk).
 
     Parameters
     ----------
@@ -736,6 +880,8 @@ def dummy_initial_observation_dummies(
         VAR data (uses ``y0_mean``).
     delta : float
         Tightness :math:`\delta > 0` (smaller = tighter).
+    groups : array-like of int, optional
+        Unit-root group of every variable; default: one group per variable.
 
     Returns
     -------
@@ -744,6 +890,11 @@ def dummy_initial_observation_dummies(
     Xd : numpy.ndarray
         :math:`(1/\delta, Y_d, \dots, Y_d)`, shape ``(1, k)``.
 
+    Raises
+    ------
+    ValueError
+        If ``groups`` does not have one label per variable.
+
     Examples
     --------
     >>> import numpy as np
@@ -751,15 +902,20 @@ def dummy_initial_observation_dummies(
     >>> Yd, Xd = dummy_initial_observation_dummies(s, 0.5)
     >>> Yd.tolist(), Xd.tolist()
     ([[2.0, 4.0]], [[2.0, 2.0, 4.0]])
+    >>> dummy_initial_observation_dummies(s, 0.5, groups=[1, 1])[0].tolist()
+    [[3.0, 3.0]]
     """
-    Yd = system.y0_mean[None, :] / delta
+    _, level = _group_levels(system, groups)
+    Yd = level[None, :] / delta
     blocks = [Yd] * system.lags
     if system.constant:
         blocks.insert(0, np.full((1, 1), 1.0 / delta))
     return Yd, np.hstack(blocks)
 
 
-def prior_dummies(system: VARSystem, hyper: BVARHyperparameters) -> tuple[np.ndarray, np.ndarray]:
+def prior_dummies(
+    system: VARSystem, hyper: BVARHyperparameters, settings: PriorSettings | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """Stacked sum-of-coefficients and dummy-initial-observation rows in use.
 
     Parameters
@@ -768,11 +924,14 @@ def prior_dummies(system: VARSystem, hyper: BVARHyperparameters) -> tuple[np.nda
         VAR data.
     hyper : BVARHyperparameters
         ``mu``/``delta`` (``None`` = that prior is off).
+    settings : PriorSettings, optional
+        Its ``unit_root_groups`` set the groups of the dummies (default: one per
+        variable).
 
     Returns
     -------
     Yd : numpy.ndarray
-        Shape ``(m, n)`` with ``m`` in ``{0, 1, n, n + 1}``.
+        Shape ``(m, n)`` with ``m`` in ``{0, 1, G, G + 1}`` (``G`` groups).
     Xd : numpy.ndarray
         Shape ``(m, k)``.
 
@@ -784,14 +943,18 @@ def prior_dummies(system: VARSystem, hyper: BVARHyperparameters) -> tuple[np.nda
     (4, 3)
     >>> prior_dummies(s, BVARHyperparameters(0.2, np.ones(3)))[1].shape
     (0, 4)
+    >>> grouped = PriorSettings(unit_root_groups=["a", "a", "b"])
+    >>> prior_dummies(s, BVARHyperparameters(0.2, np.ones(3), mu=1.0), grouped)[0].shape
+    (2, 3)
     """
+    groups = None if settings is None else settings.group_index(system.n)
     ys, xs = [np.empty((0, system.n))], [np.empty((0, system.k))]
     if hyper.mu is not None:
-        Yd, Xd = sum_of_coefficients_dummies(system, hyper.mu)
+        Yd, Xd = sum_of_coefficients_dummies(system, hyper.mu, groups)
         ys.append(Yd)
         xs.append(Xd)
     if hyper.delta is not None:
-        Yd, Xd = dummy_initial_observation_dummies(system, hyper.delta)
+        Yd, Xd = dummy_initial_observation_dummies(system, hyper.delta, groups)
         ys.append(Yd)
         xs.append(Xd)
     return np.vstack(ys), np.vstack(xs)
@@ -1141,7 +1304,7 @@ def posterior(
     45.0
     """
     prior = minnesota_prior(system, hyper, settings)
-    Yd, Xd = prior_dummies(system, hyper)
+    Yd, Xd = prior_dummies(system, hyper, settings)
     if Yd.shape[0] == 0:
         return niw_posterior(system.Y, system.X, prior)
     full = niw_posterior(np.vstack([Yd, system.Y]), np.vstack([Xd, system.X]), prior)
@@ -1314,7 +1477,7 @@ def log_marginal_likelihood_gradient(
     (True, (2,))
     """
     prior = minnesota_prior(system, hyper, settings)
-    Yd, Xd = prior_dummies(system, hyper)
+    Yd, Xd = prior_dummies(system, hyper, settings)
     m = Yd.shape[0]
     Y_all, X_all = np.vstack([Yd, system.Y]), np.vstack([Xd, system.X])
     full = niw_posterior(Y_all, X_all, prior)
@@ -1325,7 +1488,8 @@ def log_marginal_likelihood_gradient(
         d_omega, d_psi, d_rows = _gradient_parts(Yd, Xd, prior, dummy, m)
         value -= dummy.log_ml
         g_omega, g_psi, g_rows = g_omega - d_omega, g_psi - d_psi, g_rows - d_rows
-    return value, _chain_rule(system, hyper, g_omega, g_psi, g_rows)
+    n_soc = m - int(hyper.delta is not None)  # sum-of-coefficients rows come first
+    return value, _chain_rule(system, hyper, g_omega, g_psi, g_rows, n_soc)
 
 
 def _chain_rule(
@@ -1334,10 +1498,10 @@ def _chain_rule(
     g_omega: np.ndarray,
     g_psi: np.ndarray,
     g_rows: np.ndarray,
+    n_soc: int,
 ) -> HyperGradient:
     """Map block derivatives to the log hyperparameters."""
     g_lags = g_omega[int(system.constant) :]
-    n_soc = system.n if hyper.mu is not None else 0
     return HyperGradient(
         lambda_=float(2.0 * np.sum(g_lags)),
         psi=g_psi - g_lags.reshape(system.lags, system.n).sum(axis=0),

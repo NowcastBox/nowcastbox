@@ -128,7 +128,8 @@ __all__ = [
 
 logger = get_logger(__name__)
 
-_PRIOR_MEANS = ("white_noise", "random_walk")
+_BLOCKED_RW = "blocked_random_walk"
+_PRIOR_MEANS = ("white_noise", "random_walk", _BLOCKED_RW)
 _PRIOR_KEYS = frozenset({"lambda", "mu", "delta", "psi"})
 _MIN_OBSERVATIONS = 3
 _DRAW_CHUNK = 50
@@ -154,11 +155,15 @@ def _identity_stats(columns: Sequence[str]) -> StandardizationStats:
 
 
 def _mean_value(value: object) -> float:
-    """Own-lag prior mean of one entry (``"random_walk"`` = 1, ``"white_noise"`` = 0)."""
+    """Own-lag prior mean of one entry (``"random_walk"`` = 1, ``"white_noise"`` = 0).
+
+    ``"blocked_random_walk"`` also counts as 1 (its own-lag mean for a quarterly series;
+    :func:`_prior_settings` moves it to the last month for monthly series).
+    """
     if isinstance(value, str):
         if value not in _PRIOR_MEANS:
             raise ValueError(f"prior_mean must be one of {_PRIOR_MEANS} or numeric, got {value!r}.")
-        return 1.0 if value == "random_walk" else 0.0
+        return 0.0 if value == "white_noise" else 1.0
     if isinstance(value, bool) or not isinstance(value, int | float | np.integer | np.floating):
         raise ValueError(f"prior_mean values must be numeric or a name, got {value!r}.")
     if not np.isfinite(float(value)):
@@ -166,18 +171,60 @@ def _mean_value(value: object) -> float:
     return float(value)
 
 
-def _prior_settings(names: Sequence[str], prior_mean: object, lag_decay: float) -> PriorSettings:
+def _is_blocked(value: object) -> bool:
+    return isinstance(value, str) and value == _BLOCKED_RW
+
+
+def _prior_settings(
+    names: Sequence[str],
+    prior_mean: object,
+    lag_decay: float,
+    months: Sequence[int] | None = None,
+) -> PriorSettings:
     """Minnesota settings of a VAR on ``names`` (mapping prior means expanded per variable).
 
     ``names`` holds the source series of every VAR variable (repeated for the three
-    monthly blocks of a blocked series).
+    monthly blocks of a blocked series) and ``months`` the month of the quarter of each
+    (default: 3, i.e. every variable is its own last month). ``"blocked_random_walk"``
+    (globally or for some series of a mapping) gives the full first-lag mean matrix of
+    the blocked random walk and one unit-root group per series.
     """
     if isinstance(prior_mean, Mapping):
-        means = [_mean_value(prior_mean.get(name, 0.0)) for name in names]
+        raw = [prior_mean.get(name, 0.0) for name in names]
+    else:
+        raw = [prior_mean] * len(names)
+    if any(_is_blocked(v) for v in raw):
+        return _blocked_settings(names, raw, months, lag_decay)
+    if isinstance(prior_mean, Mapping):
+        means = [_mean_value(v) for v in raw]
         return PriorSettings(prior_mean=means, lag_decay=float(lag_decay))
     if isinstance(prior_mean, str):
         return PriorSettings(prior_mean=prior_mean, lag_decay=float(lag_decay))
     return PriorSettings(prior_mean=_mean_value(prior_mean), lag_decay=float(lag_decay))
+
+
+def _blocked_settings(
+    names: Sequence[str], raw: Sequence[object], months: Sequence[int] | None, lag_decay: float
+) -> PriorSettings:
+    r"""Blocked random-walk prior: :math:`\operatorname{E}[x^{(m)}_t] = x^{(3)}_{t-1}`.
+
+    Every blocked variable with value ``"blocked_random_walk"`` gets mean 1 on the
+    first lag of the last month of its series (itself for quarterly series), the
+    others the usual own-lag mean; the blocks of one series form one unit-root group.
+    """
+    n = len(names)
+    month = [3] * n if months is None else [int(m) for m in months]
+    last: dict[str, int] = {}
+    for col, name in enumerate(names):
+        if name not in last or month[col] > month[last[name]]:
+            last[name] = col
+    A1 = np.zeros((n, n))
+    for i, value in enumerate(raw):
+        if _is_blocked(value):
+            A1[i, last[names[i]]] = 1.0
+        else:
+            A1[i, i] = _mean_value(value)
+    return PriorSettings(prior_mean=A1, lag_decay=float(lag_decay), unit_root_groups=list(names))
 
 
 def _fixed_hyperparameters(
@@ -663,11 +710,14 @@ def _estimate_var(
     periods: pd.PeriodIndex,
     names: Sequence[str],
     options: _EstimationOptions,
+    months: Sequence[int] | None = None,
 ) -> _Estimate:
     """BVAR posterior on the longest balanced run of ``values`` (rows = ``periods``).
 
     Shared by the blocked (quarterly) and the monthly engines; ``names`` gives the source
-    series of every column (prior means by series, warnings).
+    series of every column (prior means by series, warnings) and ``months`` the month of
+    the quarter of every blocked column (blocked random-walk prior; ``None`` for the
+    monthly engine, where every column is its own last month).
     """
     start, end = balanced_run(values)
     if end - start + 1 < options.lags + _MIN_OBSERVATIONS:
@@ -678,7 +728,7 @@ def _estimate_var(
         )
     _warn_discarded(values, periods, names, start)
     system = VARSystem.from_array(values[start : end + 1], options.lags)
-    settings = _prior_settings(names, options.prior_mean, options.lag_decay)
+    settings = _prior_settings(names, options.prior_mean, options.lag_decay, months)
     try:
         hyper, selection = _resolve_prior(system, settings, options)
         post = posterior(system, hyper, settings)
@@ -705,7 +755,7 @@ def _fit_engine(panel: MixedFrequencyData, options: _EstimationOptions) -> Block
     std = stats.transform(panel.data.loc[:, list(layout.series)])
     quarters, values = block_values(std, layout)
     names = [layout.source_name(c) for c in range(layout.n)]
-    est = _estimate_var(values, quarters, names, options)
+    est = _estimate_var(values, quarters, names, options, layout.month)
     return BlockedBVAR(
         layout=layout,
         standardization=stats,
@@ -1376,10 +1426,20 @@ class LargeBVAR(BaseNowcaster):
         ``delta`` are used only when their prior is switched on, default 1). A
         :class:`~nowcastbox.models._bvar_prior.BVARHyperparameters` is used as given
         (its ``mu``/``delta`` decide which dummy priors are on).
-    prior_mean : {"white_noise", "random_walk"}, float or mapping, default "white_noise"
-        Prior mean of the own first-lag coefficient: 0 for stationary data (growth
-        rates, the usual nowcastbox panels), 1 for (log-)levels, a number, or a mapping
-        ``{series: value}`` (missing series: 0; every month of a series gets its value).
+    prior_mean : {"white_noise", "random_walk", "blocked_random_walk"}, float or mapping, \
+default "white_noise"
+        Prior mean of the first-lag coefficients: ``"white_noise"`` (0) for stationary
+        data (growth rates, the usual nowcastbox panels); ``"random_walk"`` (1 on the own
+        first lag of every blocked variable, as in Cimadomo et al., 2022, eq. 2: each
+        month is centred on the *same month* of the previous quarter);
+        ``"blocked_random_walk"`` for (log-)levels: every month of a monthly series is
+        centred on the *last month* of the previous quarter,
+        :math:`\operatorname{E}[x^{(m)}_t] = x^{(3)}_{t-1}` - the blocked form of a
+        monthly random walk - with one shared unit root per series in the
+        sum-of-coefficients and dummy-initial-observation priors (quarterly series:
+        same as ``"random_walk"``); a number; or a mapping ``{series: value}`` (missing
+        series: 0; values may be any of the names, e.g. ``"white_noise"`` for a
+        stationary survey in a log-level panel).
     sum_of_coefficients : bool, default False
         Add the sum-of-coefficients prior (Doan, Litterman & Sims, 1984) - for data in
         levels.

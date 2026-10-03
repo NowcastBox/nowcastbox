@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `LargeBVAR(prior_mean="blocked_random_walk")` (also per series in a mapping, and in
+  `fit_blocked_bvar` / the `"bvar"` extrapolator): the blocked form of a monthly random
+  walk - every month of a monthly series is centred on the **last month of the previous
+  quarter** instead of on the same month of the previous quarter (the own-lag
+  `"random_walk"` of Cimadomo et al., 2022, kept unchanged); the three blocks of a series
+  share one unit root in the sum-of-coefficients and dummy-initial-observation priors
+  (one row per series, common starting level). Recommended for monthly series in
+  (log-)levels: on a simulated monthly random walk the GLP-selected lambda falls by about
+  two orders of magnitude. Theory: "Blocked random walk" on the BVAR prior page.
+- `PriorSettings` accepts a full `(n, n)` prior mean of the first-lag matrix and
+  `unit_root_groups` (new `first_lag_mean`, `group_index`); the sum-of-coefficients /
+  initial-observation dummy builders and `prior_dummies` take the groups; the marginal
+  likelihood, posterior and analytic gradient support both.
+
 ## [0.2.0] - 2026-10-02
 
 Parity with the ECB Nowcasting Toolbox (Linzenich & Meunier, 2024, ECB WP 3004), released

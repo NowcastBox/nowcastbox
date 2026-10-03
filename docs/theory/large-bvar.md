@@ -50,8 +50,13 @@ is set to the mode of its posterior, under GLP's Gamma hyperpriors. As in Cimado
 (2022), the scales $\psi_j$ are fixed at the residual variances of univariate AR(1)
 regressions; `estimate_psi=True` estimates them too. The prior mean of the own first
 lag is 0 by default (`prior_mean="white_noise"`), which suits the stationary
-transformations used in nowcasting panels. For (log-)levels, use `"random_walk"`
-together with the two dummy priors, as in Cimadomo et al. (2022).
+transformations used in nowcasting panels. For (log-)levels, Cimadomo et al. (2022)
+centre the blocked VAR on $\operatorname{E}[A_1] = I$ (`"random_walk"`: each month on the
+same month of the previous quarter) together with the two dummy priors.
+`"blocked_random_walk"` centres every month of a monthly series on the **last month of
+the previous quarter** — the exact blocked form of a monthly random walk — and makes the
+three blocks of a series share one unit root in the dummy priors; see
+[Blocked random walk](bvar-prior.md#blocked-random-walk-mixed-frequency-var-with-blocking).
 
 The closed-form posterior needs a complete data matrix. `LargeBVAR` therefore
 estimates on the balanced part of the blocked panel: the longest run of complete

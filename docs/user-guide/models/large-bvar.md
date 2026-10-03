@@ -26,7 +26,7 @@ print(res.summary())                               # lambda, estimation sample, 
 |---|---|---|
 | `lags` | `1` | quarterly lags of the blocked VAR (1–2 for growth rates; Cimadomo et al. use 5 in log-levels) |
 | `prior` | `"glp"` | `"glp"`: hierarchical choice of $\lambda$ (and $\mu$, $\delta$); a mapping such as `{"lambda": 0.2}` fixes them |
-| `prior_mean` | `"white_noise"` | own-lag prior mean: 0 for growth rates, `"random_walk"` for levels, a number, or `{series: value}` |
+| `prior_mean` | `"white_noise"` | first-lag prior mean: 0 for growth rates; for levels `"random_walk"` (own lag, as in Cimadomo et al.) or `"blocked_random_walk"` (every month on the last month of the previous quarter); a number; or `{series: value}` |
 | `sum_of_coefficients` | `False` | sum-of-coefficients prior (for levels) |
 | `initial_observation` | `False` | dummy-initial-observation prior (for levels) |
 | `estimate_psi` | `False` | also estimate the prior scales $\psi$ (default: AR(1) residual variances) |
@@ -53,6 +53,35 @@ Cimadomo et al. (2022):
 LargeBVAR(lags=5, prior_mean="random_walk",
           sum_of_coefficients=True, initial_observation=True)
 ```
+
+In the blocked VAR, `"random_walk"` centres each month on the **same month of the
+previous quarter** ($x^{(1)}_t$ on $x^{(1)}_{t-1}$, three months earlier) — the
+specification of the paper ($\operatorname{E}[A_1] = I$). For a monthly random walk the
+best guess of any month is the **last observed month**, $x^{(3)}_{t-1}$; the
+`"blocked_random_walk"` prior mean centres all three blocks of a monthly series on it
+(quarterly series keep the own-lag random walk) and lets the three blocks share one unit
+root in the sum-of-coefficients and initial-observation priors:
+
+```python
+LargeBVAR(lags=5, prior_mean="blocked_random_walk",
+          sum_of_coefficients=True, initial_observation=True)
+
+# stationary series (surveys, rates) can stay at white noise:
+LargeBVAR(lags=5,
+          prior_mean={**dict.fromkeys(level_series, "blocked_random_walk"),
+                      "pmi": "white_noise"},
+          sum_of_coefficients=True, initial_observation=True)
+```
+
+Use it whenever monthly series enter in (log-)levels. With the own-lag centring the data
+contradict the prior in two of the three equations of every monthly series, so the
+hierarchical choice picks a loose $\lambda$ (and very tight $\mu$) and the nowcasts
+become noisy; on a simulated monthly random walk the blocked centring lowers the selected
+$\lambda$ by two orders of magnitude and raises the marginal likelihood by hundreds of log
+points. The derivation (prior variances, grouped dummy priors) is on the
+[BVAR prior page](../../theory/bvar-prior.md#blocked-random-walk-mixed-frequency-var-with-blocking).
+For the monthly VAR of the `"bvar"` indicator extrapolator the option equals
+`"random_walk"`.
 
 The nowcast is then in the units of the target (for example a log level). Compute
 growth rates from the forecast levels yourself.

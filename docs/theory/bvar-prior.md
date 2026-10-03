@@ -87,6 +87,70 @@ for cointegration (a common stochastic trend). Both priors become dogmatic as $\
 \delta \to 0$ and vanish as $\mu, \delta \to \infty$. The dummy rows are prepended to the
 data; the prior they encode is the NIW prior updated by them.
 
+### Blocked random walk (mixed-frequency VAR with blocking)
+
+In the blocked VAR of the [large BVAR](large-bvar.md) every monthly series $x$ becomes
+three quarterly variables $x^{(1)}_t, x^{(2)}_t, x^{(3)}_t$ (months of quarter $t$).
+Cimadomo et al. (2022, §2.2) use for the blocked vector "the same means and variances"
+as in their monthly VAR, $\operatorname{E}[A_1] = I_N$ (their eq. 2): every block is
+centred on **its own** first lag, i.e. $x^{(1)}_t$ on $x^{(1)}_{t-1}$, three months
+earlier. This is `prior_mean="random_walk"`.
+
+If $x$ is a monthly random walk, $x_\tau = x_{\tau-1} + u_\tau$, the blocked
+representation is
+
+$$
+x^{(1)}_t = x^{(3)}_{t-1} + u_1, \qquad
+x^{(2)}_t = x^{(3)}_{t-1} + u_1 + u_2, \qquad
+x^{(3)}_t = x^{(3)}_{t-1} + u_1 + u_2 + u_3,
+$$
+
+a quarterly VAR(1) whose reduced-form first-lag matrix has, inside the block of $x$,
+**ones in the column of the last month** $x^{(3)}_{t-1}$ and zeros elsewhere (and
+correlated innovations, which $\Sigma$ captures). `prior_mean="blocked_random_walk"`
+centres the Minnesota prior on it: $\operatorname{E}[A_1]_{(x,m),(x,3)} = 1$ for
+$m = 1, 2, 3$; quarterly series keep the own-lag random walk; in a mapping, individual
+series may be `"blocked_random_walk"`, `"random_walk"`, `"white_noise"` or a number.
+Under the own-lag random walk the conditional nowcast of an unreleased month in a tight
+prior repeats the same month of the previous quarter; under the blocked random walk it is
+the last released month — the no-change forecast of a monthly random walk.
+
+*Prior variances.* The conjugate NIW prior requires $\operatorname{Var}(\operatorname{vec}
+B \mid \Sigma) = \Sigma \otimes \Omega$ with one $\Omega$ for all equations, so the
+variance of a coefficient may depend on the regressor and the lag but not on the
+equation. A "monthly-lag" decay ($x^{(3)}_{t-1}$ is one month before $x^{(1)}_t$ but three
+months before $x^{(3)}_t$) is therefore not available; the variances keep the quarterly
+lag decay $1/l^\kappa$ and the scales $\psi_j$, exactly as in Cimadomo et al. (eq. 3).
+
+*Sum-of-coefficients and initial observation.* The usual rows impose
+$\sum_l A_l = I$, i.e. a unit root **per block**, which contradicts the blocked random
+walk (whose $\sum_l A_l$ restricted to the block of $x$ is $\iota e_3'$, not $I_3$). A
+monthly I(1) series has a single unit root in the blocked VAR (the blocks cointegrate:
+$x^{(2)}_t - x^{(1)}_t$ is stationary), with eigenvector $\iota_x = (1, 1, 1)'$:
+$\sum_l A_l\, \iota_x = \iota_x$. With the blocked random walk the three blocks of a
+series therefore form one *unit-root group* $g$ with common starting level
+$\bar y_{0,g}$ (the mean of $\bar y_0$ over the blocks, i.e. of the $3p$ pre-sample
+months) and the sum-of-coefficients prior has **one row per series**,
+
+$$
+Y^{+}_{g,i} = \frac{\bar y_{0,g}}{\mu}\,1\{i \in g\}, \qquad X^{+}_g = (0, Y^{+}_g, \dots, Y^{+}_g),
+$$
+
+which states: when all blocks of the series sit at a common level in all lags, the
+series stays there and the other variables do not move. The dummy-initial-observation row
+uses the group levels as well. The blocked random walk (constant 0) satisfies all these
+rows exactly; singleton groups give back the usual priors. The marginal likelihood,
+posterior and gradient are unchanged in form (they hold for any prior mean $b$; the
+$\mu$-derivative sums over the $G$ group rows).
+
+When to use it: blocked VARs in (log-)levels with Cimadomo-style settings
+(random-walk centred prior, sum-of-coefficients and initial-observation priors, several
+quarterly lags). With the own-lag centring, the data contradict the prior in two of the
+three equations of every monthly series and the hierarchical choice compensates with a
+loose $\lambda$ (and, with dummies, a very tight $\mu$); on a simulated monthly random
+walk the selected $\lambda$ drops by two orders of magnitude with the blocked centring.
+This refinement is nowcastbox's derivation, not part of the paper.
+
 ## Posterior and marginal likelihood
 
 Conjugacy gives
@@ -200,7 +264,16 @@ Carlo moments of the draws ($\operatorname{E}[\Sigma]$, $\operatorname{Var}(\Sig
 $\operatorname{E}[B]$, $\operatorname{Cov}(\operatorname{vec}B)$) and agreement with
 `scipy.stats.invwishart`; that the Minnesota dummies reproduce $b$, $\Omega$ and $\Psi$;
 and that very tight sum-of-coefficients / initial-observation priors impose
-$\sum_l B_l = I$ and $c + \sum_l B_l\bar y_0 = \bar y_0$. On simulated data the selected
+$\sum_l B_l = I$ and $c + \sum_l B_l\bar y_0 = \bar y_0$. For the blocked random walk
+(`tests/models/test_bvar_blocked_prior.py`): the Minnesota dummies reproduce the full
+prior-mean matrix; the closed-form marginal likelihood with a non-diagonal mean and
+grouped dummies matches the GLP formula written with explicit cross-products and its
+gradient matches finite differences; the grouped rows have zero residual at the blocked
+random walk; a tight grouped sum-of-coefficients prior imposes
+$\sum_l A_l\iota_g = \iota_g$; on a simulated monthly random walk the posterior is
+centred on $x^{(3)}_{t-1}$ and GLP selects a $\lambda$ more than ten times tighter
+than with the own-lag centring; and with $\lambda \to 0$ the conditional nowcast of an
+unreleased quarter is the last released month. On simulated data the selected
 $\lambda$ falls with the number of (factor-driven) variables and with the amount of
 measurement noise.
 
